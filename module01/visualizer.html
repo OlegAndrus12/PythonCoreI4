@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Python Memory Visualizer</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+    background: #f5f6f8;
+    color: #4c4f69;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  h1 { font-size: 18px; font-weight: 600; color: #8839ef; margin-bottom: 4px; }
+  .subtitle { font-size: 12px; color: #6c6f85; margin-bottom: 24px; }
+
+  .repl {
+    display: flex;
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #dce0e8;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    gap: 8px;
+  }
+  .repl-prompt { color: #8839ef; font-size: 14px; user-select: none; }
+  .repl-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #4c4f69;
+    font-family: inherit;
+    font-size: 14px;
+    caret-color: #8839ef;
+  }
+  .repl-hint { font-size: 11px; color: #9ca0b0; margin-bottom: 10px; padding-left: 4px; }
+  .repl-hint span { color: #6c6f85; }
+
+  /* Command history */
+  .cmd-history {
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-height: 0;
+  }
+  .cmd-entry {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #ffffff;
+    border: 1px solid #dce0e8;
+    border-radius: 5px;
+    padding: 4px 10px;
+    font-size: 12px;
+    animation: fadeIn 0.15s ease;
+  }
+  .cmd-entry .cmd-prompt { color: #9ca0b0; user-select: none; }
+  .cmd-entry .cmd-text   { color: #1e66f5; }
+  .cmd-entry .cmd-text.is-del    { color: #d20f39; }
+  .cmd-entry .cmd-text.is-gc     { color: #2e7d1f; }
+  .cmd-entry .cmd-text.is-inspect{ color: #a6620c; }
+
+  .gc-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #40a02b;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 20px;
+  }
+  .gc-btn:hover { opacity: 0.85; }
+
+  /* Error toast */
+  .toast {
+    position: fixed;
+    bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #d20f39;
+    color: #ffffff;
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 100;
+  }
+  .toast.show { opacity: 1; }
+
+  /* Arena */
+  .arena { display: grid; grid-template-columns: 220px 1fr; min-height: 460px; }
+
+  .vars-panel {
+    background: #ffffff;
+    border-radius: 10px 0 0 10px;
+    border: 1px solid #dce0e8;
+    border-right: none;
+    padding: 16px;
+  }
+  .panel-title {
+    font-size: 11px;
+    color: #6c6f85;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 14px;
+  }
+  .var-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #eef0f4;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    animation: fadeIn 0.2s ease;
+    transition: background 0.15s, outline 0.15s;
+  }
+  .var-name  { color: #1e66f5; font-weight: 600; }
+  .var-arrow { color: #8c8fa1; margin: 0 6px; }
+  .var-addr  { color: #c2410c; font-size: 11px; }
+  .var-item.highlighted {
+    background: #ece4fd;
+    outline: 2px solid #8839ef;
+    outline-offset: -1px;
+  }
+
+  .heap-panel {
+    background: #fafbfc;
+    border-radius: 0 10px 10px 0;
+    border: 1px solid #dce0e8;
+    padding: 16px;
+  }
+  .heap-inner {
+    background: #ffffff;
+    border: 2px dashed #ccd0da;
+    border-radius: 8px;
+    min-height: 400px;
+    padding: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 12px;
+    position: relative;
+  }
+  .heap-label {
+    position: absolute;
+    bottom: 8px; right: 12px;
+    font-size: 11px; color: #bcc0cc;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+
+  /* Object cards */
+  .obj-card {
+    background: #f7f8fa;
+    border: 1px solid #d4d8e1;
+    border-radius: 8px;
+    padding: 10px 14px;
+    min-width: 148px;
+    animation: fadeIn 0.2s ease;
+    transition: outline 0.1s;
+    box-shadow: 0 1px 2px rgba(76,79,105,.06);
+  }
+  .obj-card.gc-pending { border-color: #d20f39; animation: pulse 0.6s ease infinite alternate; }
+  .obj-card.interned   { border-color: #df8e1d; }
+  .obj-card.list-card  { min-width: 200px; }
+  .obj-card.slot-highlight { outline: 2px solid #1e66f5; outline-offset: 1px; }
+
+  .obj-field { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0; gap: 16px; }
+  .fk { color: #6c6f85; }
+  .fv { color: #4c4f69; font-weight: 500; }
+  .fv.type  { color: #0478a8; }
+  .fv.value { color: #2e7d1f; }
+  .fv.addr  { color: #c2410c; font-size: 11px; }
+  .fv.refc  { color: #a6620c; }
+  .fv.refc.zero { color: #d20f39; }
+  hr.div { border: none; border-top: 1px solid #dce0e8; margin: 6px 0; }
+
+  /* List slots */
+  .list-slots { margin: 4px 0 2px; }
+  .list-slot {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    padding: 3px 4px;
+    border-radius: 4px;
+    cursor: default;
+    transition: background 0.1s;
+  }
+  .list-slot:hover { background: #e6e9ef; }
+  .slot-idx   { color: #8c8fa1; min-width: 22px; }
+  .slot-sep   { color: #bcc0cc; }
+  .slot-tval  { color: #2e7d1f; }
+  .slot-addr  { color: #c2410c; margin-left: auto; }
+
+  /* Bytecode panel */
+  .bytecode-panel {
+    margin-top: 20px;
+    background: #ffffff;
+    border: 1px solid #dce0e8;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .bytecode-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid #dce0e8;
+    font-size: 11px;
+    color: #6c6f85;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+  }
+  .bytecode-header .bc-cmd {
+    color: #1e66f5;
+    font-size: 12px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .bytecode-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .bytecode-table td {
+    padding: 5px 16px;
+    border-bottom: 1px solid #eef0f4;
+    white-space: nowrap;
+  }
+  .bytecode-table tr:last-child td { border-bottom: none; }
+  .bc-offset { color: #9ca0b0; width: 40px; }
+  .bc-opcode { color: #8839ef; width: 180px; font-weight: 600; }
+  .bc-arg    { color: #c2410c; width: 180px; }
+  .bc-stack  { color: #8c8fa1; font-size: 11px; }
+  .bc-stack .stack-item { color: #2e7d1f; }
+  .bytecode-table tr.bc-active td { background: #f1ebfe; }
+  .bytecode-table tr.bc-active .bc-opcode { color: #5b1fc0; }
+  .bytecode-table tr.bc-done td { opacity: .4; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulse {
+    from { box-shadow: 0 0 0 0 rgba(210,15,57,.35); }
+    to   { box-shadow: 0 0 0 6px rgba(210,15,57,0); }
+  }
+</style>
+</head>
+<body>
+
+<h1>Python Memory Visualizer</h1>
+<p class="subtitle">Variables are references. Objects live on the heap. Ref count = 0 → garbage collected.</p>
+
+<div class="repl">
+  <span class="repl-prompt">&gt;&gt;&gt;</span>
+  <input class="repl-input" id="replInput" placeholder='a = 42' autocomplete="off" spellcheck="false" />
+</div>
+<p class="repl-hint">
+  <span>a = 42</span> &nbsp;·&nbsp; <span>b = a</span> &nbsp;·&nbsp;
+  <span>a = [1, "hi", True]</span> &nbsp;·&nbsp; <span>a.append(99)</span> &nbsp;·&nbsp;
+  <span>a.pop()</span> &nbsp;·&nbsp; <span>del a</span> &nbsp;·&nbsp; <span>a</span> (inspect)
+</p>
+
+<div class="cmd-history" id="cmdHistory"></div>
+
+<button class="gc-btn" onclick="runGC()">▶ Run Garbage Collector</button>
+
+<div class="arena">
+  <div class="vars-panel">
+    <div class="panel-title">Variables</div>
+    <div id="varsList"></div>
+  </div>
+  <div class="heap-panel">
+    <div class="panel-title">Heap Memory</div>
+    <div class="heap-inner" id="heapInner">
+      <span class="heap-label">Heap Memory</span>
+    </div>
+  </div>
+</div>
+
+<div class="bytecode-panel" id="bytecodePanel" style="display:none">
+  <div class="bytecode-header">
+    Bytecode &nbsp;·&nbsp; <span class="bc-cmd" id="bcCmd"></span>
+  </div>
+  <table class="bytecode-table" id="bcTable"></table>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────
+  let variables = {};   // name → objectId
+  let objects   = {};   // id → { id, type, value?, items?[], refCount, addr, interned }
+  let nextId    = 1;
+  let nextAddr  = 0x7f3a00;
+  const internedPool = {};
+
+  // ── Helpers ───────────────────────────────────────────────────
+  function fakeAddr() {
+    const a = nextAddr;
+    nextAddr += Math.floor(Math.random() * 80 + 32);
+    return '0x' + a.toString(16);
+  }
+
+  function isInternable(type, value) {
+    if (type === 'int') { const n = parseInt(value); return n >= -5 && n <= 256; }
+    return false;
+  }
+
+  function addToHistory(text, cls = '') {
+    const wrap = document.getElementById('cmdHistory');
+    const el   = document.createElement('div');
+    el.className = 'cmd-entry';
+    el.innerHTML = `<span class="cmd-prompt">&gt;&gt;&gt;</span><span class="cmd-text ${cls}">${text}</span>`;
+    wrap.appendChild(el);
+  }
+
+  function showError(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // ── Parse helpers ─────────────────────────────────────────────
+  function parseValue(raw) {
+    const s = raw.trim();
+    if (s === 'True')  return { type: 'bool', value: 'True' };
+    if (s === 'False') return { type: 'bool', value: 'False' };
+    if (s === 'None')  return { type: 'NoneType', value: 'None' };
+    const strM = s.match(/^["'](.*)["']$/);
+    if (strM) return { type: 'str', value: strM[1] };
+    if (/^-?\d+\.\d+$/.test(s)) return { type: 'float', value: s };
+    if (/^-?\d+$/.test(s))      return { type: 'int',   value: s };
+    if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(s)) return { varRef: s };
+    return null;
+  }
+
+  function tokenizeList(raw) {
+    // split by comma respecting quotes
+    const items = [];
+    let cur = '', inStr = false, strCh = '';
+    for (const ch of raw) {
+      if (inStr) { cur += ch; if (ch === strCh) inStr = false; }
+      else if (ch === '"' || ch === "'") { inStr = true; strCh = ch; cur += ch; }
+      else if (ch === ',') { if (cur.trim()) items.push(cur.trim()); cur = ''; }
+      else cur += ch;
+    }
+    if (cur.trim()) items.push(cur.trim());
+    return items;
+  }
+
+  function parse(raw) {
+    const line = raw.trim();
+
+    // del varname
+    const delM = line.match(/^del\s+([a-zA-Z_][a-zA-Z0-9_]*)$/);
+    if (delM) return { op: 'del', name: delM[1] };
+
+    // name.append(val)
+    const appM = line.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\.append\((.+)\)$/);
+    if (appM) {
+      const pv = parseValue(appM[2].trim());
+      if (!pv) return { op: 'error', msg: `Cannot parse: ${appM[2]}` };
+      return { op: 'append', name: appM[1], item: pv };
+    }
+
+    // name.pop()
+    const popM = line.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\.pop\(\)$/);
+    if (popM) return { op: 'pop', name: popM[1] };
+
+    // name = [...]
+    const listM = line.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*\[(.*)\]$/);
+    if (listM) {
+      const rawItems = tokenizeList(listM[2]);
+      const parsed = rawItems.map(parseValue);
+      if (parsed.some(x => x === null)) return { op: 'error', msg: 'Cannot parse one of the list items' };
+      return { op: 'assign', name: listM[1], isList: true, items: parsed };
+    }
+
+    // name = value
+    const assignM = line.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.+)$/);
+    if (assignM) {
+      const pv = parseValue(assignM[2].trim());
+      if (!pv) return { op: 'error', msg: `Cannot parse value: ${assignM[2]}` };
+      return { op: 'assign', name: assignM[1], ...pv };
+    }
+
+    // bare name → inspect
+    if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(line)) return { op: 'inspect', name: line };
+
+    return { op: 'error', msg: `Unknown statement: ${line}` };
+  }
+
+  // ── Object management ─────────────────────────────────────────
+  function findOrCreate(type, value) {
+    const ik = `${type}:${value}`;
+    if (isInternable(type, value) && internedPool[ik] !== undefined) return internedPool[ik];
+    const id = nextId++;
+    objects[id] = { id, type, value, refCount: 0, addr: fakeAddr(), interned: isInternable(type, value) };
+    if (isInternable(type, value)) internedPool[ik] = id;
+    return id;
+  }
+
+  function resolveItem(parsed) {
+    // parsed is { type, value } or { varRef }
+    if (parsed.varRef !== undefined) {
+      if (!(parsed.varRef in variables)) { showError(`NameError: '${parsed.varRef}' is not defined`); return null; }
+      return variables[parsed.varRef];
+    }
+    return findOrCreate(parsed.type, parsed.value);
+  }
+
+  function incRef(id) { if (objects[id]) objects[id].refCount++; }
+
+  function decRef(id) {
+    if (!objects[id]) return;
+    objects[id].refCount = Math.max(0, objects[id].refCount - 1);
+  }
+
+  function execAssign(name, objectId) {
+    if (variables[name] !== undefined) decRef(variables[name]);
+    variables[name] = objectId;
+    incRef(objectId);
+  }
+
+  function execDel(name) {
+    if (!(name in variables)) { showError(`NameError: '${name}' is not defined`); return; }
+    decRef(variables[name]);
+    delete variables[name];
+  }
+
+  function runGC() {
+    addToHistory('gc.collect()', 'is-gc');
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const id in objects) {
+        if (objects[id].refCount <= 0) {
+          // if it's a list, release item refs first
+          if (objects[id].type === 'list') {
+            for (const itemId of objects[id].items) decRef(itemId);
+          }
+          delete objects[id];
+          changed = true;
+          break; // restart loop since decRef may have dropped others to 0
+        }
+      }
+    }
+    render();
+  }
+
+  // ── Bytecode ──────────────────────────────────────────────────
+  function generateBytecode(stmt) {
+    const instrs = [];
+    let offset = 0;
+    function emit(opcode, arg = '') { instrs.push({ offset, opcode, arg }); offset += 2; }
+
+    switch (stmt.op) {
+      case 'assign':
+        if (stmt.isList) {
+          for (const item of stmt.items)
+            item.varRef ? emit('LOAD_NAME', item.varRef) : emit('LOAD_CONST', `${item.value}  (${item.type})`);
+          emit('BUILD_LIST', String(stmt.items.length));
+          emit('STORE_NAME', stmt.name);
+        } else if (stmt.varRef) {
+          emit('LOAD_NAME',  stmt.varRef);
+          emit('STORE_NAME', stmt.name);
+        } else {
+          emit('LOAD_CONST', `${stmt.value}  (${stmt.type})`);
+          emit('STORE_NAME', stmt.name);
+        }
+        break;
+      case 'del':
+        emit('DELETE_NAME', stmt.name);
+        break;
+      case 'append':
+        emit('LOAD_NAME',   stmt.name);
+        emit('LOAD_METHOD', 'append');
+        stmt.item.varRef ? emit('LOAD_NAME', stmt.item.varRef) : emit('LOAD_CONST', `${stmt.item.value}  (${stmt.item.type})`);
+        emit('CALL_METHOD', '1');
+        emit('POP_TOP');
+        break;
+      case 'pop':
+        emit('LOAD_NAME',   stmt.name);
+        emit('LOAD_METHOD', 'pop');
+        emit('CALL_METHOD', '0');
+        emit('POP_TOP');
+        break;
+      case 'inspect':
+        emit('LOAD_NAME', stmt.name);
+        break;
+    }
+    return instrs;
+  }
+
+  function stackAfterEach(instrs) {
+    const stack = [];
+    return instrs.map(instr => {
+      switch (instr.opcode) {
+        case 'LOAD_CONST':  stack.push(instr.arg.split('  ')[0]); break;
+        case 'LOAD_NAME':   stack.push(instr.arg); break;
+        case 'LOAD_METHOD': stack.push(`<method ${instr.arg}>`); break;
+        case 'STORE_NAME':  stack.pop(); break;
+        case 'DELETE_NAME': break;
+        case 'BUILD_LIST': {
+          const n = parseInt(instr.arg);
+          const items = stack.splice(-n);
+          stack.push(`[${items.join(', ')}]`);
+          break;
+        }
+        case 'CALL_METHOD': {
+          const n = parseInt(instr.arg);
+          stack.splice(-(n + 2)); // args + method + self
+          stack.push('None');
+          break;
+        }
+        case 'POP_TOP': stack.pop(); break;
+      }
+      return { ...instr, stack: [...stack] };
+    });
+  }
+
+  let _bcTimer = null;
+  function showBytecode(label, instrs) {
+    clearTimeout(_bcTimer);
+    const panel = document.getElementById('bytecodePanel');
+    const table = document.getElementById('bcTable');
+    document.getElementById('bcCmd').textContent = label;
+    panel.style.display = '';
+
+    const withStack = stackAfterEach(instrs);
+    table.innerHTML = withStack.map((instr, i) => {
+      const stackHtml = instr.stack.length
+        ? instr.stack.map(s => `<span class="stack-item">${s}</span>`).join(', ')
+        : '<span style="color:#9ca0b0">empty</span>';
+      return `<tr id="bcr${i}" class="bc-done">
+        <td class="bc-offset">${instr.offset}</td>
+        <td class="bc-opcode">${instr.opcode}</td>
+        <td class="bc-arg">${instr.arg}</td>
+        <td class="bc-stack">stack: [ ${stackHtml} ]</td>
+      </tr>`;
+    }).join('');
+
+    // animate through rows
+    let i = 0;
+    function next() {
+      if (i > 0) document.getElementById(`bcr${i-1}`)?.classList.replace('bc-active', 'bc-done');
+      if (i >= withStack.length) return;
+      const row = document.getElementById(`bcr${i}`);
+      row?.classList.replace('bc-done', 'bc-active');
+      i++;
+      _bcTimer = setTimeout(next, 320);
+    }
+    next();
+  }
+
+  // ── Execute ───────────────────────────────────────────────────
+  function execute(line) {
+    if (!line.trim()) return;
+    const stmt = parse(line);
+
+    if (stmt.op === 'error') { showError(stmt.msg); return; }
+
+    const cls = stmt.op === 'del' ? 'is-del' : stmt.op === 'inspect' ? 'is-inspect' : '';
+    addToHistory(line, cls);
+    showBytecode(line, generateBytecode(stmt));
+
+    if (stmt.op === 'inspect') {
+      if (!(stmt.name in variables)) { showError(`NameError: '${stmt.name}' is not defined`); return; }
+      const o = objects[variables[stmt.name]];
+      if (o.type === 'list') {
+        const preview = o.items.map(id => {
+          const item = objects[id];
+          return item ? `${item.type}(${item.value})` : '?';
+        }).join(', ');
+        showToastInfo(`${stmt.name} → list[${preview}]  addr=${o.addr}  refCount=${o.refCount}`);
+      } else {
+        showToastInfo(`${stmt.name} → ${o.type}(${o.value})  addr=${o.addr}  refCount=${o.refCount}`);
+      }
+      return;
+    }
+
+    if (stmt.op === 'del') { execDel(stmt.name); }
+
+    if (stmt.op === 'assign') {
+      if (stmt.isList) {
+        // resolve all items first
+        const itemIds = [];
+        for (const item of stmt.items) {
+          const id = resolveItem(item);
+          if (id === null) return;
+          itemIds.push(id);
+        }
+        // create list object
+        const listId = nextId++;
+        objects[listId] = { id: listId, type: 'list', items: itemIds, refCount: 0, addr: fakeAddr() };
+        // incRef all items
+        for (const id of itemIds) incRef(id);
+        execAssign(stmt.name, listId);
+      } else if (stmt.varRef !== undefined) {
+        if (!(stmt.varRef in variables)) { showError(`NameError: '${stmt.varRef}' is not defined`); return; }
+        execAssign(stmt.name, variables[stmt.varRef]);
+      } else {
+        execAssign(stmt.name, findOrCreate(stmt.type, stmt.value));
+      }
+    }
+
+    if (stmt.op === 'append') {
+      if (!(stmt.name in variables)) { showError(`NameError: '${stmt.name}' is not defined`); return; }
+      const listObj = objects[variables[stmt.name]];
+      if (!listObj || listObj.type !== 'list') { showError(`TypeError: '${stmt.name}' is not a list`); return; }
+      const itemId = resolveItem(stmt.item);
+      if (itemId === null) return;
+      listObj.items.push(itemId);
+      incRef(itemId);
+    }
+
+    if (stmt.op === 'pop') {
+      if (!(stmt.name in variables)) { showError(`NameError: '${stmt.name}' is not defined`); return; }
+      const listObj = objects[variables[stmt.name]];
+      if (!listObj || listObj.type !== 'list') { showError(`TypeError: '${stmt.name}' is not a list`); return; }
+      if (listObj.items.length === 0) { showError('IndexError: pop from empty list'); return; }
+      const removedId = listObj.items.pop();
+      decRef(removedId);
+    }
+
+    render();
+  }
+
+  function showToastInfo(msg) {
+    const t = document.getElementById('toast');
+    t.style.background = '#1e66f5';
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.classList.remove('show'); t.style.background = ''; }, 3500);
+  }
+
+  // ── Render ────────────────────────────────────────────────────
+  function render() {
+    // Variables panel
+    const vl = document.getElementById('varsList');
+    vl.innerHTML = '';
+    for (const name in variables) {
+      const obj = objects[variables[name]];
+      const d   = document.createElement('div');
+      d.className = 'var-item';
+      d.dataset.addr = obj ? obj.addr : '';
+      d.innerHTML = `<span class="var-name">${name}</span><span class="var-arrow">→</span><span class="var-addr">${obj ? obj.addr : '??'}</span>`;
+      vl.appendChild(d);
+    }
+
+    // Heap panel
+    const heap = document.getElementById('heapInner');
+    heap.innerHTML = '<span class="heap-label">Heap Memory</span>';
+
+    for (const id in objects) {
+      const o = objects[id];
+      const c = document.createElement('div');
+      const isList = o.type === 'list';
+      c.className = 'obj-card' +
+        (isList ? ' list-card' : '') +
+        (o.refCount <= 0 ? ' gc-pending' : '') +
+        (o.interned ? ' interned' : '');
+      c.dataset.addr = o.addr;
+
+      // hover: highlight vars pointing to this card
+      c.addEventListener('mouseenter', () => {
+        document.querySelectorAll('.var-item').forEach(el =>
+          el.classList.toggle('highlighted', el.dataset.addr === o.addr));
+      });
+      c.addEventListener('mouseleave', () => {
+        document.querySelectorAll('.var-item').forEach(el => el.classList.remove('highlighted'));
+        document.querySelectorAll('.obj-card').forEach(el => el.classList.remove('slot-highlight'));
+      });
+
+      // header fields
+      let html = `
+        <div class="obj-field"><span class="fk">type</span><span class="fv type">${o.type}</span></div>`;
+
+      if (isList) {
+        html += `<div class="obj-field"><span class="fk">length</span><span class="fv value">${o.items.length}</span></div>`;
+        html += `<hr class="div"><div class="list-slots">`;
+        o.items.forEach((itemId, idx) => {
+          const item = objects[itemId];
+          const addr = item ? item.addr : '??';
+          const tval = item ? `${item.type}(${item.value})` : '?';
+          html += `<div class="list-slot" data-slot-addr="${addr}">
+            <span class="slot-idx">[${idx}]</span>
+            <span class="slot-sep">→</span>
+            <span class="slot-tval">${tval}</span>
+            <span class="slot-addr">${addr}</span>
+          </div>`;
+        });
+        html += `</div>`;
+      } else {
+        html += `<div class="obj-field"><span class="fk">value</span><span class="fv value">${o.value}</span></div>`;
+      }
+
+      html += `
+        <hr class="div">
+        <div class="obj-field"><span class="fk">id</span><span class="fv addr">${o.addr}</span></div>
+        <div class="obj-field"><span class="fk">ref count</span><span class="fv refc ${o.refCount <= 0 ? 'zero' : ''}">${o.refCount}</span></div>
+        ${o.interned ? '<div style="font-size:10px;color:#a6620c;margin-top:5px">⚡ interned</div>' : ''}
+      `;
+      c.innerHTML = html;
+
+      // slot hover → highlight target object card
+      c.querySelectorAll('.list-slot').forEach(slot => {
+        slot.addEventListener('mouseenter', e => {
+          e.stopPropagation();
+          document.querySelectorAll('.obj-card').forEach(el => el.classList.remove('slot-highlight'));
+          const target = heap.querySelector(`.obj-card[data-addr="${slot.dataset.slotAddr}"]`);
+          if (target) target.classList.add('slot-highlight');
+        });
+        slot.addEventListener('mouseleave', () => {
+          document.querySelectorAll('.obj-card').forEach(el => el.classList.remove('slot-highlight'));
+        });
+      });
+
+      heap.appendChild(c);
+    }
+  }
+
+  // ── Input ─────────────────────────────────────────────────────
+  const input = document.getElementById('replInput');
+  const history = [];
+  let histIdx = -1;
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const line = input.value;
+      if (line.trim()) { history.unshift(line); histIdx = -1; }
+      execute(line);
+      input.value = '';
+    }
+    if (e.key === 'ArrowUp') {
+      if (histIdx + 1 < history.length) { histIdx++; input.value = history[histIdx]; }
+      e.preventDefault();
+    }
+    if (e.key === 'ArrowDown') {
+      if (histIdx > 0) { histIdx--; input.value = history[histIdx]; }
+      else { histIdx = -1; input.value = ''; }
+      e.preventDefault();
+    }
+  });
+
+  input.focus();
+</script>
+</body>
+</html>
