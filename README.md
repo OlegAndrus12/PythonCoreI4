@@ -1,4 +1,4 @@
-# Python Core — iteration 4
+# Python Core
 
 [![Python](https://img.shields.io/badge/Python-3.14-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/downloads/)
 
