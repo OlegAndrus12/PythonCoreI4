@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Керуючі конструкції Python</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Onest:wght@600;800&display=swap">
+<style>
+/* Layout: tabbed cheatsheet. Sticky tab rail of constructs; each panel = header, step-through visualizer, syntax, rules, REPL cells. */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --ink: #141a24;
+  --muted: #5a6476;
+  --line: #dbe0e8;
+  --accent: #2354c7;
+  --accent-soft: #e6edfb;
+  --err: #b4322b;
+  --err-soft: #fbeceb;
+  --ok: #1f7a4d;
+  /* memory roles */
+  --m-gc: #eceef2;   --m-gc-ink: #6b7384;
+  --m-head: #dfe7f7; --m-head-ink: #23407f;
+  --m-meta: #ece3f7; --m-meta-ink: #5a3290;
+  --m-ptr: #d9f0ec;  --m-ptr-ink: #105e52;
+  --m-data: #fbefc9; --m-data-ink: #7a5300;
+  --m-empty: #f6f7f9; --m-empty-ink: #9aa2b1;
+  --font-display: "Onest", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1218; --surface: #151b24; --ink: #e5e9f0; --muted: #98a2b4; --line: #283141;
+    --accent: #86a8ff; --accent-soft: #1b2740; --err: #ff8a80; --err-soft: #3a1d1d; --ok: #6fd3a0;
+    --m-gc: #1d222b; --m-gc-ink: #8d96a7;
+    --m-head: #1b2a48; --m-head-ink: #a9c1f7;
+    --m-meta: #2b2140; --m-meta-ink: #cdb4f5;
+    --m-ptr: #12322d; --m-ptr-ink: #8fe0d1;
+    --m-data: #3a2f12; --m-data-ink: #f4d27a;
+    --m-empty: #181d25; --m-empty-ink: #5f6878;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1218; --surface: #151b24; --ink: #e5e9f0; --muted: #98a2b4; --line: #283141;
+  --accent: #86a8ff; --accent-soft: #1b2740; --err: #ff8a80; --err-soft: #3a1d1d; --ok: #6fd3a0;
+  --m-gc: #1d222b; --m-gc-ink: #8d96a7;
+  --m-head: #1b2a48; --m-head-ink: #a9c1f7;
+  --m-meta: #2b2140; --m-meta-ink: #cdb4f5;
+  --m-ptr: #12322d; --m-ptr-ink: #8fe0d1;
+  --m-data: #3a2f12; --m-data-ink: #f4d27a;
+  --m-empty: #181d25; --m-empty-ink: #5f6878;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-inline: 16px; padding-block: 0 64px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; }
+code, pre, .mono { font-family: var(--font-mono); font-size: 0.9em; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+/* header */
+.top { padding-block: 32px 18px; display: flex; flex-wrap: wrap; gap: 12px 32px; align-items: end; justify-content: space-between; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(28px, 4.4vw, 42px); line-height: 1.05; margin: 6px 0 8px; letter-spacing: -0.01em; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); max-width: 62ch; }
+.key-legend { display: flex; gap: 16px; font-size: 13px; color: var(--muted); }
+.key-legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+/* tabs */
+.tabs {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg); border-bottom: 1px solid var(--line);
+  margin-inline: -16px; padding-inline: 16px;
+}
+.tablist { max-width: 1180px; margin: 0 auto; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.tablist::-webkit-scrollbar { display: none; }
+.tab {
+  appearance: none; border: 0; background: none; cursor: pointer; color: var(--muted);
+  font-family: var(--font-mono); font-size: 15px; font-weight: 500;
+  padding: 12px 14px 11px; border-bottom: 3px solid transparent; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 700; }
+.dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid currentColor; flex: none; }
+.dot.mut { background: currentColor; }
+.tab .dot { color: var(--accent); }
+.tab.compare { margin-left: auto; font-family: var(--font-body); }
+
+/* panel header */
+.panel { padding-block: 28px 0; }
+.p-head { display: grid; grid-template-columns: auto 1fr; gap: 6px 28px; align-items: start; }
+.p-name { font-family: var(--font-mono); font-weight: 700; font-size: clamp(44px, 8vw, 76px); line-height: 0.95; letter-spacing: -0.03em; color: var(--accent); }
+.p-tag { font-size: 18px; margin: 4px 0 12px; max-width: 60ch; text-wrap: pretty; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-family: var(--font-mono); font-size: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; }
+.flags { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 14px; font-size: 13px; }
+.flag { display: inline-flex; gap: 6px; align-items: baseline; }
+.flag b { font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; font-size: 11px; color: var(--muted); }
+.flag .yes { color: var(--ok); font-weight: 600; }
+.flag .no { color: var(--muted); }
+@media (max-width: 640px) { .p-head { grid-template-columns: 1fr; } }
+
+/* sections */
+section.s { margin-top: 40px; }
+.s-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 18px; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 22px; margin: 0; letter-spacing: -0.005em; }
+.s-h .sub { color: var(--muted); font-size: 13px; }
+.s-h .grow { flex: 1; }
+
+/* properties */
+.props { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 18px 36px; }
+.prop { min-width: 0; padding-top: 10px; border-top: 1px solid var(--line); }
+.prop h3 { font-size: 15px; font-weight: 600; margin: 0 0 3px; }
+.prop p { margin: 0; color: var(--muted); font-size: 14px; }
+.prop code, .notes code, .m-desc code { color: var(--ink); background: var(--surface); border: 1px solid var(--line); padding: 0 4px; border-radius: 3px; font-size: 0.86em; }
+
+/* methods */
+.filter { font-family: var(--font-mono); font-size: 14px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); width: min(100%, 16em); }
+.m-group { font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; color: var(--muted); margin: 22px 0 6px; }
+.m-group:first-child { margin-top: 0; }
+.m-row { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr) minmax(0, 1.25fr); gap: 6px 24px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.m-name { font-family: var(--font-mono); font-weight: 700; font-size: 15px; }
+.m-sig { font-family: var(--font-mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; margin-top: 2px; }
+.m-desc { font-size: 14px; }
+.m-empty { color: var(--muted); padding: 12px 0; }
+@media (max-width: 900px) { .m-row { grid-template-columns: 1fr; } }
+.m-note { font-size: 14px; color: var(--muted); margin: -6px 0 12px; }
+
+/* code cells */
+.cell { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.cell pre { margin: 0; padding: 8px 12px; overflow-x: auto; font-size: 13px; line-height: 1.5; }
+.cell .res { border-top: 1px dashed var(--line); padding: 6px 12px; font-family: var(--font-mono); font-size: 13px; overflow-x: auto; white-space: pre; display: flex; gap: 8px; }
+.cell .res::before { content: "→"; color: var(--muted); flex: none; }
+.cell .res.err { background: var(--err-soft); color: var(--err); }
+.cell .res.err::before { content: "✕"; }
+.cell .stdout { padding: 4px 12px 0; font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); white-space: pre; }
+.cell .stdout::before { content: "виводить: "; font-family: var(--font-body); }
+.cell .note { padding: 0 12px 8px; font-size: 12.5px; color: var(--muted); }
+.ops { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 12px; }
+.ops .cell .note { padding-top: 6px; }
+.tk-k { color: var(--m-meta-ink); font-weight: 500; }
+.tk-s { color: var(--ok); }
+.tk-n { color: var(--m-data-ink); }
+.tk-b { color: var(--accent); }
+.tk-c { color: var(--muted); font-style: italic; }
+
+/* truth table + compare */
+.tbl-scroll { overflow-x: auto; }
+table.t { border-collapse: collapse; font-size: 14px; width: 100%; }
+table.t th, table.t td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.t th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+table.t td.n { font-family: var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; }
+table.t td.y { color: var(--ok); font-weight: 600; }
+table.t td.x { color: var(--muted); }
+table.t td code { font-weight: 700; }
+table.t tbody tr:hover { background: var(--surface); }
+.truth td { font-family: var(--font-mono); text-align: center; }
+.truth th { text-align: center; }
+
+footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+footer p { margin: 0 0 4px; max-width: 80ch; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .panel { animation: rise 0.22s ease-out; }
+  @keyframes rise { from { transform: translateY(4px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+}
+
+/* ---------- visualizer ---------- */
+code, pre, .mono, .ln, .pill, .it, .vt, .chip { font-variant-ligatures: none; }
+kbd { font-family: var(--font-mono); font-size: 12px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--surface); color: var(--ink); }
+.viz { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+.viz:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.viz-top { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-bottom: 6px; }
+.seg { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.seg button { appearance: none; cursor: pointer; border: 1px solid var(--line); background: var(--bg); color: var(--muted); font: 500 13px var(--font-body); padding: 5px 11px; border-radius: 999px; }
+.seg button:hover { color: var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.seg.small button { font-family: var(--font-mono); font-size: 12px; padding: 3px 9px; }
+.seg-l { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; margin-right: 4px; }
+.viz-desc { color: var(--muted); font-size: 14px; margin: 4px 0 12px; }
+.viz-desc code { color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0 4px; border-radius: 3px; font-size: .86em; }
+.viz-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; }
+@media (max-width: 820px) { .viz-grid { grid-template-columns: minmax(0, 1fr); } .viz { padding: 10px; } }
+
+.code { position: relative; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 0; overflow-x: auto; }
+.code svg.jumps { position: absolute; left: 0; top: 8px; width: 34px; overflow: visible; pointer-events: none; }
+.ln { display: flex; height: 24px; align-items: center; font-family: var(--font-mono); font-size: 13.5px; white-space: pre; position: relative; transition: background .25s; }
+.ln .no { flex: none; width: 58px; padding-right: 12px; text-align: right; color: var(--muted); opacity: .55; font-size: 12px; position: relative; }
+.ln .src { padding-right: 14px; }
+.ln.seen .no { opacity: 1; }
+.ln.seen .no::after { content: ""; position: absolute; right: 4px; top: 50%; width: 4px; height: 4px; margin-top: -2px; border-radius: 50%; background: var(--muted); }
+.ln.cur { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.ln.cur .no { color: var(--accent); opacity: 1; font-weight: 700; }
+.ln.cur .no::after { background: var(--accent); }
+.ln.bad { background: var(--err-soft); box-shadow: inset 3px 0 0 var(--err); }
+.ln.bad .no { color: var(--err); }
+.ln.bad .no::after { background: var(--err); }
+.ln.cur .src::after { content: attr(data-badge); margin-left: 14px; font-family: var(--font-body); font-size: 11.5px; color: var(--muted); }
+path.jump { fill: none; stroke-width: 1.8; stroke-linecap: round; }
+path.jump.back { stroke: var(--accent); }
+path.jump.fwd { stroke: var(--muted); }
+path.jump.exc { stroke: var(--err); stroke-dasharray: 4 3; }
+@media (prefers-reduced-motion: no-preference) {
+  path.jump.draw { animation: draw .45s ease-out both; }
+  @keyframes draw { from { stroke-dashoffset: var(--len); } to { stroke-dashoffset: 0; } }
+}
+
+.cap { margin-top: 12px; border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; min-height: 92px; background: var(--bg); }
+.cap.bad { border-color: var(--err); }
+.cap-h { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-bottom: 6px; }
+.stepno { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.pill { font-family: var(--font-mono); font-size: 12.5px; border-radius: 4px; padding: 1px 8px; border: 1px solid var(--line); background: var(--surface); }
+.pill.t { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); }
+.pill.f { color: var(--err); border-color: color-mix(in srgb, var(--err) 45%, var(--line)); }
+.pill.x { background: var(--err-soft); color: var(--err); border-color: var(--err); font-weight: 600; }
+.pill.r { color: var(--accent); }
+.cap p { margin: 0; font-size: 14.5px; text-wrap: pretty; }
+.cap p code { background: var(--surface); border: 1px solid var(--line); padding: 0 4px; border-radius: 3px; font-size: .86em; }
+
+.state { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.box { border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); padding: 8px 10px 10px; min-width: 0; }
+.box h4 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; display: flex; justify-content: space-between; }
+.iter-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.it { font-family: var(--font-mono); font-size: 12.5px; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); transition: all .25s; position: relative; }
+.it.done { opacity: .45; text-decoration: line-through; text-decoration-color: var(--muted); }
+.it.now { color: var(--ink); border-color: var(--accent); background: var(--accent-soft); font-weight: 700; transform: translateY(-2px); box-shadow: 0 2px 0 var(--accent); }
+.it.stop { color: var(--err); border-style: dashed; }
+.it.stop.now { border-color: var(--err); background: var(--err-soft); box-shadow: 0 2px 0 var(--err); }
+
+.frames { display: flex; flex-direction: column-reverse; gap: 6px; }
+.frame { border: 1px solid var(--line); border-radius: 5px; background: var(--surface); padding: 4px 8px 6px; }
+.frame.top { border-color: var(--accent); }
+.frame.hurt { border-color: var(--err); background: var(--err-soft); }
+.frame .fn { line-height: 1.6; font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--accent); display: flex; justify-content: space-between; gap: 8px; }
+.frame.hurt .fn { color: var(--err); }
+.frame:not(.top) .fn { color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) {
+  .frame.enter { animation: push .3s ease-out; }
+  @keyframes push { from { transform: translateY(-8px); opacity: 0; } }
+  .frame.hurt.top { animation: shake .35s; }
+  @keyframes shake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+}
+.vt { margin-top: 2px; width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 12.5px; }
+.vt td { padding: 2px 0; vertical-align: top; }
+.vt td:first-child { width: 1%; white-space: nowrap; padding-right: 10px; }
+.vt td:last-child { overflow-wrap: anywhere; }
+.vt tr.fn td { color: var(--muted); }
+.vt .v { border-radius: 3px; padding: 0 3px; transition: background .6s; }
+.vt tr.chg .v { background: var(--m-data); color: var(--m-data-ink); }
+.vt .empty { color: var(--muted); font-family: var(--font-body); font-style: italic; }
+.out { margin: 0; min-height: 3.2em; max-height: 9.5em; overflow: auto; font-family: var(--font-mono); font-size: 12.5px; white-space: pre-wrap; }
+.out .new { background: var(--m-ptr); color: var(--m-ptr-ink); border-radius: 3px; }
+.out .ph { color: var(--muted); font-family: var(--font-body); font-style: italic; }
+
+.ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 12px; }
+.ctl button { appearance: none; cursor: pointer; border: 1px solid var(--line); background: var(--bg); color: var(--ink); width: 36px; height: 34px; border-radius: 6px; font-size: 15px; display: inline-grid; place-items: center; }
+.ctl button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.ctl button:disabled { opacity: .35; cursor: default; }
+.ctl button.play { width: 46px; background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.ctl button.play:hover { color: var(--surface); filter: brightness(1.1); }
+.ctl input[type=range] { flex: 1; min-width: 120px; accent-color: var(--accent); }
+.ctl select { font: 12.5px var(--font-mono); background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 6px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--muted); margin-top: 10px; }
+.legend i { display: inline-block; width: 18px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 6px; }
+
+pre.syntax { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px; overflow-x: auto; font-size: 13.5px; line-height: 1.6; }
+
+/* exception tree */
+.tree, .tree ul { list-style: none; margin: 0; padding: 0; }
+.tree ul { margin-left: 18px; border-left: 1px solid var(--line); }
+.tree li { padding: 2px 0 2px 14px; position: relative; font-family: var(--font-mono); font-size: 13.5px; }
+.tree ul > li::before { content: ""; position: absolute; left: 0; top: 13px; width: 10px; border-top: 1px solid var(--line); }
+.tree .base { color: var(--muted); }
+.tree .ex { color: var(--accent); font-weight: 700; }
+.tree .nb { font-family: var(--font-body); font-size: 12px; color: var(--muted); margin-left: 8px; }
+.tree-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+@media (max-width: 760px) { .tree-wrap { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow" id="ver">CPython 3.14</div>
+      <h1>Керуючі конструкції та винятки</h1>
+      <p class="lede">if, while, for і try/except: синтаксис, правила, підводні камені та покрокова анімація того, як інтерпретатор виконує кожну інструкцію.</p>
+    </div>
+    <div class="key-legend">
+      <span><kbd>←</kbd>&nbsp;<kbd>→</kbd> крок</span>
+      <span><kbd>пробіл</kbd> пуск / пауза</span>
+    </div>
+  </header>
+</div>
+<nav class="tabs" aria-label="Конструкції">
+  <div class="tablist" role="tablist" id="tablist"></div>
+</nav>
+<main class="wrap" id="panels"></main>
+<div class="wrap">
+  <footer>
+    <p>Кожен крок анімації записано справжнім запуском коду в CPython <span id="ver2">3.14</span> через <code>sys.settrace</code>. Тому видно реальну поведінку інтерпретатора: наприклад, рядки <code>else:</code> не мають власного кроку, а <code>while True</code> повторно не перевіряється.</p>
+  </footer>
+</div>
+
+<script>
+const DATA = {"version": "3.14.3", "order": ["if", "while", "for", "try"], "tabs": {"if": {"title": "if", "label": "if", "tagline": "Розгалуження: виконати блок коду, лише якщо умова істинна. Python обчислює умову, перетворює результат на bool і обирає першу гілку, що підходить.", "chips": ["if", "elif", "else", "and / or / not", "a if c else b", "match / case"], "flags": {"Створює область видимості": "ні", "Гілок виконується": "≤ 1", "Обов'язкові частини": "лише if"}, "syntax": "if умова_1:\n    ...            # якщо умова_1 істинна\nelif умова_2:     # скільки завгодно elif\n    ...\nelse:             # необов'язково\n    ...\n\nзначення = a if умова else b   # тернарний вираз", "props": [{"t": "Перевірка згори донизу", "d": "Умови перевіряються по черзі, і виконується лише ПЕРША істинна гілка. Решта навіть не обчислюється."}, {"t": "Будь-що може бути умовою", "d": "if викликає `bool()` для результату. Хибні: `False`, `None`, `0`, `0.0`, `''`, `[]`, `()`, `{}`, `set()`. Тому `if items:` означає «список не порожній»."}, {"t": "Відступи — це синтаксис", "d": "Тіло блоку визначається відступом, а не дужками. Стандарт — 4 пробіли. Змішування табів і пробілів дає `TabError`."}, {"t": "Коротке замикання", "d": "`a and b`: якщо a хибне, b не обчислюється. `a or b`: якщо a істинне, b не обчислюється. Обидва повертають один з операндів, а не обов'язково True/False."}, {"t": "Блок не створює області видимості", "d": "Змінна, створена всередині if, доступна після нього. Але якщо гілка не виконалася, змінної не буде: отримаєте `NameError`."}, {"t": "Порожня гілка", "d": "Блок не може бути порожнім. Використовуйте `pass` як заглушку."}], "scenarios": [{"name": "if / elif / else", "desc": "Умови перевіряються згори донизу. Виконується лише перша гілка, умова якої істинна.", "variants": [{"label": "score = 95", "code": "score = 95\nif score >= 90:\n    grade = \"A\"\nelif score >= 75:\n    grade = \"B\"\nelse:\n    grade = \"C\"\nprint(\"Оцінка:\", grade)", "steps": [{"l": 1, "k": "line", "f": [{"fn": "модуль", "vars": [["score", "95", ""]]}], "out": "", "ev": [], "cap": "Створюємо змінну score і зв'язуємо її зі значенням 95."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["score", "95", ""]]}], "out": "", "ev": [["score >= 90", "True", true]], "cap": "Умова істинна, тож заходимо в тіло if."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["score", "95", ""], ["grade", "'A'", ""]]}], "out": "", "ev": [], "cap": "Виконується тіло if. Гілки elif та else вже не перевірятимуться: інтерпретатор стрибне одразу за кінець конструкції."}, {"l": 8, "k": "line", "f": [{"fn": "модуль", "vars": [["score", "95", ""], ["grade", "'A'", ""]]}], "out": "Оцінка: A\n", "ev": [], "cap": "Після if/elif/else виконання продовжується тут, хоч би яка гілка спрацювала."}]}, {"label": "score = 82", "code": "score = 82\nif score >= 90:\n    grade = \"A\"\nelif score >= 75:\n    grade = \"B\"\nelse:\n    grade = \"C\"\nprint(\"Оцінка:\", grade)", "steps": [{"l": 1, "k": "line", "f": [{"fn": "модуль", "vars": [["score", "82", ""]]}], "out": "", "ev": [], "cap": "Створюємо змінну score і зв'язуємо її зі значенням 82."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["score", "82", ""]]}], "out": "", "ev": [["score >= 90", "False", false]], "cap": "Умова хибна. Тіло if пропускаємо і переходимо до elif."}, {"l": 4, "k": "line", "f": [{"fn": "модуль", "vars": [["score", "82", ""]]}], "out": "", "ev": [["score >= 75", "True", true]], "cap": "Умова elif істинна, тож виконуємо її тіло."}, {"l": 5, "k": "line", "f": [{"fn": "модуль", "vars": [["score", "82", ""], ["grade", "'B'", ""]]}], "out": "", "ev": [], "cap": "Тіло elif. Після нього виконання переходить за межі всієї конструкції if/elif/else."}, {"l": 8, "k": "line", "f": [{"fn": "модуль", "vars": [["score", "82", ""], ["grade", "'B'", ""]]}], "out": "Оцінка: B\n", "ev": [], "cap": "Після if/elif/else виконання продовжується тут, хоч би яка гілка спрацювала."}]}, {"label": "score = 40", "code": "score = 40\nif score >= 90:\n    grade = \"A\"\nelif score >= 75:\n    grade = \"B\"\nelse:\n    grade = \"C\"\nprint(\"Оцінка:\", grade)", "steps": [{"l": 1, "k": "line", "f": [{"fn": "модуль", "vars": [["score", "40", ""]]}], "out": "", "ev": [], "cap": "Створюємо змінну score і зв'язуємо її зі значенням 40."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["score", "40", ""]]}], "out": "", "ev": [["score >= 90", "False", false]], "cap": "Умова хибна. Тіло if пропускаємо і переходимо до elif."}, {"l": 4, "k": "line", "f": [{"fn": "модуль", "vars": [["score", "40", ""]]}], "out": "", "ev": [["score >= 75", "False", false]], "cap": "Умова elif теж хибна. Лишається else."}, {"l": 7, "k": "line", "f": [{"fn": "модуль", "vars": [["score", "40", ""], ["grade", "'C'", ""]]}], "out": "", "ev": [], "cap": "Жодна умова не справдилася, тому виконується else. Рядок `else:` сам нічого не обчислює, тому інтерпретатор на ньому не зупиняється."}, {"l": 8, "k": "line", "f": [{"fn": "модуль", "vars": [["score", "40", ""], ["grade", "'C'", ""]]}], "out": "Оцінка: C\n", "ev": [], "cap": "Після if/elif/else виконання продовжується тут, хоч би яка гілка спрацювала."}]}], "iter": false}, {"name": "Коротке замикання and", "desc": "`and` і `or` обчислюють праву частину, лише коли без неї результат ще невідомий.", "variants": [{"label": "user = None", "code": "user = None\nif user and user[\"active\"]:\n    print(\"Привіт,\", user[\"name\"])\nelse:\n    print(\"Привіт, гостю\")", "steps": [{"l": 1, "k": "line", "f": [{"fn": "модуль", "vars": [["user", "None", ""]]}], "out": "", "ev": [], "cap": "Зв'язуємо user зі значенням None."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["user", "None", ""]]}], "out": "", "ev": [["user", "None", false], ["user and user['active']", "None", false]], "cap": "user дорівнює None, а None хибне. `and` одразу повертає None і НЕ обчислює `user[\"active\"]`, тому TypeError не виникає."}, {"l": 5, "k": "line", "f": [{"fn": "модуль", "vars": [["user", "None", ""]]}], "out": "Привіт, гостю\n", "ev": [], "cap": "Умова хибна, тому виконується else."}]}, {"label": "активний", "code": "user = {\"name\": \"Оля\", \"active\": True}\nif user and user[\"active\"]:\n    print(\"Привіт,\", user[\"name\"])\nelse:\n    print(\"Привіт, гостю\")", "steps": [{"l": 1, "k": "line", "f": [{"fn": "модуль", "vars": [["user", "{'name': 'Оля', 'active': True}", ""]]}], "out": "", "ev": [], "cap": "Зв'язуємо user зі значенням {'name': 'Оля', 'active': True}."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["user", "{'name': 'Оля', 'active': True}", ""]]}], "out": "", "ev": [["user", "{'name': 'Оля', 'active': True}", true], ["user and user['active']", "True", true]], "cap": "user — непорожній словник, тобто істинний. Тому `and` обчислює праву частину, `user[\"active\"]`, і її значення стає результатом умови."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["user", "{'name': 'Оля', 'active': True}", ""]]}], "out": "Привіт, Оля\n", "ev": [], "cap": "Обидві частини істинні, тож виконується тіло if."}]}, {"label": "неактивний", "code": "user = {\"name\": \"Ігор\", \"active\": False}\nif user and user[\"active\"]:\n    print(\"Привіт,\", user[\"name\"])\nelse:\n    print(\"Привіт, гостю\")", "steps": [{"l": 1, "k": "line", "f": [{"fn": "модуль", "vars": [["user", "{'name': 'Ігор', 'active': False}", ""]]}], "out": "", "ev": [], "cap": "Зв'язуємо user зі значенням {'name': 'Ігор', 'active': False}."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["user", "{'name': 'Ігор', 'active': False}", ""]]}], "out": "", "ev": [["user", "{'name': 'Ігор', 'active': False}", true], ["user and user['active']", "False", false]], "cap": "user — непорожній словник, тобто істинний. Тому `and` обчислює праву частину, `user[\"active\"]`, і її значення стає результатом умови."}, {"l": 5, "k": "line", "f": [{"fn": "модуль", "vars": [["user", "{'name': 'Ігор', 'active': False}", ""]]}], "out": "Привіт, гостю\n", "ev": [], "cap": "Умова хибна, тому виконується else."}]}], "iter": false}], "ops": [{"ex": "bool(\"\"), bool(\"0\"), bool([]), bool([0]), bool(None)", "out": "(False, True, False, True, False)", "err": false, "stdout": "", "note": "Хибні: False, None, 0, 0.0, '', [], (), {}, set(). Все інше істинне, навіть '0' і [0]."}, {"ex": "x = 5\nif x == 1 or 2:\n    print(\"спрацювало!\")", "out": "", "err": false, "stdout": "спрацювало!\n", "note": "Пастка: це `(x == 1) or 2`, а 2 завжди істинне. Правильно: `x in (1, 2)`."}, {"ex": "age = 25\n18 <= age < 65", "out": "True", "err": false, "stdout": "", "note": "Ланцюжок порівнянь дорівнює `18 <= age and age < 65`."}, {"ex": "role = \"admin\"\nrole in (\"admin\", \"moderator\")", "out": "True", "err": false, "stdout": "", "note": "in замість кількох `==`, з'єднаних or."}, {"ex": "x = None\nx is None", "out": "True", "err": false, "stdout": "", "note": "Порівнюйте з None через is, а не ==."}, {"ex": "def check():\n    print(\"викликано\")\n    return True\n\nFalse and check()", "out": "False", "err": false, "stdout": "", "note": "check() не викликався: and зупинився на False."}, {"ex": "name = \"\"\nname or \"Анонім\"", "out": "'Анонім'", "err": false, "stdout": "", "note": "or повертає перший істинний операнд, а не True/False. Зручно для значень за замовчуванням."}, {"ex": "age = 15\n\"дорослий\" if age >= 18 else \"дитина\"", "out": "'дитина'", "err": false, "stdout": "", "note": "Тернарний вираз: значення_1 if умова else значення_2."}, {"ex": "data = [1, 2, 3]\nif (n := len(data)) > 2:\n    print(\"довжина\", n)", "out": "", "err": false, "stdout": "довжина 3\n", "note": "Моржовий оператор := присвоює значення прямо в умові (Python 3.8+)."}, {"ex": "if x = 5:\n    pass", "out": "SyntaxError: invalid syntax. Maybe you meant '==' or ':=' instead of '='?", "err": true, "stdout": "", "note": "У умові `=` заборонено. Порівняння пишуть через `==`."}, {"ex": "cmd = \"stop\"\nmatch cmd:\n    case \"start\":\n        print(\"Запуск\")\n    case \"stop\" | \"exit\":\n        print(\"Зупинка\")\n    case _:\n        print(\"Невідомо\")", "out": "", "err": false, "stdout": "Зупинка\n", "note": "match/case (3.10+) зручний, коли значення порівнюється з багатьма варіантами."}, {"ex": "if True:\nprint(\"hi\")", "out": "SyntaxError: expected an indented block after 'if' statement on line 1", "err": true, "stdout": "", "note": "Тіло блоку має бути з відступом. Стандарт — 4 пробіли."}]}, "while": {"title": "while", "label": "while", "tagline": "Повторює тіло, поки умова істинна. Умова перевіряється перед кожною ітерацією, тому тіло може не виконатися жодного разу.", "chips": ["while", "break", "continue", "while … else", "while True"], "flags": {"Створює область видимості": "ні", "Мінімум ітерацій": "0", "Ризик": "нескінченний цикл"}, "syntax": "while умова:\n    ...            # тіло: має наближати умову до False\n    if ...:\n        break      # вийти з циклу негайно\n    if ...:\n        continue   # одразу до наступної перевірки умови\nelse:\n    ...            # якщо цикл завершився БЕЗ break", "props": [{"t": "Коли використовувати", "d": "Коли кількість ітерацій наперед невідома: чекаємо коректного введення, читаємо, доки є дані, повторюємо спроби. Якщо є готова колекція чи діапазон, краще `for`."}, {"t": "Нескінченний цикл", "d": "Якщо тіло не змінює змінних з умови, цикл ніколи не закінчиться. Зупинити програму можна через Ctrl+C (`KeyboardInterrupt`)."}, {"t": "while True + break", "d": "Ідіома для меню і циклів «спробуй ще раз»: умову виходу перевіряють посередині тіла."}, {"t": "break і continue", "d": "Діють лише на найближчий цикл. `continue` у while повертає до перевірки умови, тож інкремент варто робити до нього."}, {"t": "while … else", "d": "Гілка else виконується, коли умова стала хибною, але НЕ після break. Корисно для пошуку: «не знайшли»."}, {"t": "Немає do-while", "d": "Python не має циклу з післяумовою. Замінник: `while True:` … `if not умова: break`."}], "scenarios": [{"name": "Цикл з умовою", "desc": "Умова перевіряється ПЕРЕД кожною ітерацією. Тіло має змінювати щось, від чого залежить умова, інакше цикл стане нескінченним.", "variants": [{"label": "number = 4096", "code": "number = 4096\ntotal = 0\nwhile number > 0:\n    total += number % 10\n    number //= 10\nprint(\"Сума цифр:\", total)", "steps": [{"l": 1, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "4096", ""]]}], "out": "", "ev": [], "cap": "number = 4096."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "4096", ""], ["total", "0", ""]]}], "out": "", "ev": [], "cap": "Акумулятор для суми."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "4096", ""], ["total", "0", ""]]}], "out": "", "ev": [["number > 0", "True", true]], "cap": "Умова істинна, тож починаємо ітерацію №1."}, {"l": 4, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "4096", ""], ["total", "6", ""]]}], "out": "", "ev": [["number % 10", "6", true]], "cap": "Беремо останню цифру (6) і додаємо її до total. Тепер total = 6."}, {"l": 5, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "409", ""], ["total", "6", ""]]}], "out": "", "ev": [], "cap": "Цілочисельне ділення відкидає останню цифру: number = 409. Тіло скінчилося, тож стрибаємо назад до перевірки умови."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "409", ""], ["total", "6", ""]]}], "out": "", "ev": [["number > 0", "True", true]], "cap": "Умова істинна, тож починаємо ітерацію №2."}, {"l": 4, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "409", ""], ["total", "15", ""]]}], "out": "", "ev": [["number % 10", "9", true]], "cap": "Беремо останню цифру (9) і додаємо її до total. Тепер total = 15."}, {"l": 5, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "40", ""], ["total", "15", ""]]}], "out": "", "ev": [], "cap": "Цілочисельне ділення відкидає останню цифру: number = 40. Тіло скінчилося, тож стрибаємо назад до перевірки умови."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "40", ""], ["total", "15", ""]]}], "out": "", "ev": [["number > 0", "True", true]], "cap": "Умова істинна, тож починаємо ітерацію №3."}, {"l": 4, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "40", ""], ["total", "15", ""]]}], "out": "", "ev": [["number % 10", "0", false]], "cap": "Беремо останню цифру (0) і додаємо її до total. Тепер total = 15."}, {"l": 5, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "4", ""], ["total", "15", ""]]}], "out": "", "ev": [], "cap": "Цілочисельне ділення відкидає останню цифру: number = 4. Тіло скінчилося, тож стрибаємо назад до перевірки умови."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "4", ""], ["total", "15", ""]]}], "out": "", "ev": [["number > 0", "True", true]], "cap": "Умова істинна, тож починаємо ітерацію №4."}, {"l": 4, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "4", ""], ["total", "19", ""]]}], "out": "", "ev": [["number % 10", "4", true]], "cap": "Беремо останню цифру (4) і додаємо її до total. Тепер total = 19."}, {"l": 5, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "0", ""], ["total", "19", ""]]}], "out": "", "ev": [], "cap": "Цілочисельне ділення відкидає останню цифру: number = 0. Тіло скінчилося, тож стрибаємо назад до перевірки умови."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "0", ""], ["total", "19", ""]]}], "out": "", "ev": [["number > 0", "False", false]], "cap": "Умова стала хибною після 4 ітерацій. Виходимо з циклу."}, {"l": 6, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "0", ""], ["total", "19", ""]]}], "out": "Сума цифр: 19\n", "ev": [], "cap": "Цикл завершено, виконання продовжується після нього."}]}, {"label": "number = 7", "code": "number = 7\ntotal = 0\nwhile number > 0:\n    total += number % 10\n    number //= 10\nprint(\"Сума цифр:\", total)", "steps": [{"l": 1, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "7", ""]]}], "out": "", "ev": [], "cap": "number = 7."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "7", ""], ["total", "0", ""]]}], "out": "", "ev": [], "cap": "Акумулятор для суми."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "7", ""], ["total", "0", ""]]}], "out": "", "ev": [["number > 0", "True", true]], "cap": "Умова істинна, тож починаємо ітерацію №1."}, {"l": 4, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "7", ""], ["total", "7", ""]]}], "out": "", "ev": [["number % 10", "7", true]], "cap": "Беремо останню цифру (7) і додаємо її до total. Тепер total = 7."}, {"l": 5, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "0", ""], ["total", "7", ""]]}], "out": "", "ev": [], "cap": "Цілочисельне ділення відкидає останню цифру: number = 0. Тіло скінчилося, тож стрибаємо назад до перевірки умови."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "0", ""], ["total", "7", ""]]}], "out": "", "ev": [["number > 0", "False", false]], "cap": "Умова стала хибною після 1 ітерацій. Виходимо з циклу."}, {"l": 6, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "0", ""], ["total", "7", ""]]}], "out": "Сума цифр: 7\n", "ev": [], "cap": "Цикл завершено, виконання продовжується після нього."}]}, {"label": "number = 0", "code": "number = 0\ntotal = 0\nwhile number > 0:\n    total += number % 10\n    number //= 10\nprint(\"Сума цифр:\", total)", "steps": [{"l": 1, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "0", ""]]}], "out": "", "ev": [], "cap": "number = 0."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "0", ""], ["total", "0", ""]]}], "out": "", "ev": [], "cap": "Акумулятор для суми."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "0", ""], ["total", "0", ""]]}], "out": "", "ev": [["number > 0", "False", false]], "cap": "Умова хибна вже на першій перевірці, тому тіло не виконається жодного разу."}, {"l": 6, "k": "line", "f": [{"fn": "модуль", "vars": [["number", "0", ""], ["total", "0", ""]]}], "out": "Сума цифр: 0\n", "ev": [], "cap": "Цикл завершено, виконання продовжується після нього."}]}], "iter": false}, {"name": "while True + break / continue", "desc": "Типовий цикл меню: крутиться «вічно», поки break не виведе з нього. continue одразу починає наступну ітерацію.", "variants": [{"label": "команди 7, x, 3, 0", "code": "commands = [\"7\", \"x\", \"3\", \"0\"]\ni = 0\nwhile True:\n    choice = commands[i]\n    i += 1\n    if choice == \"0\":\n        break\n    if not choice.isdigit():\n        continue\n    print(\"Обрано пункт\", choice)\nprint(\"Вихід\")", "steps": [{"l": 1, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""]]}], "out": "", "ev": [], "cap": "Імітуємо введення користувача списком команд."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "0", ""]]}], "out": "", "ev": [], "cap": "Індекс поточної команди."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "0", ""]]}], "out": "", "ev": [], "cap": "`while True:` має завжди істинну умову, тому вийти з такого циклу можна лише через break (або виняток)."}, {"l": 4, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "0", ""], ["choice", "'7'", ""]]}], "out": "", "ev": [["commands[i]", "'7'", true]], "cap": "Читаємо команду: choice = '7'."}, {"l": 5, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "1", ""], ["choice", "'7'", ""]]}], "out": "", "ev": [], "cap": "Зсуваємо індекс."}, {"l": 6, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "1", ""], ["choice", "'7'", ""]]}], "out": "", "ev": [["choice == '0'", "False", false]], "cap": "Це не \"0\", тому break пропускаємо."}, {"l": 8, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "1", ""], ["choice", "'7'", ""]]}], "out": "", "ev": [["not choice.isdigit()", "False", false]], "cap": "Команда є числом, тому continue пропускаємо."}, {"l": 10, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "1", ""], ["choice", "'7'", ""]]}], "out": "Обрано пункт 7\n", "ev": [], "cap": "Обробляємо коректну команду."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "1", ""], ["choice", "'7'", ""]]}], "out": "Обрано пункт 7\n", "ev": [], "cap": "`while True:` має завжди істинну умову, тому вийти з такого циклу можна лише через break (або виняток)."}, {"l": 4, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "1", ""], ["choice", "'x'", ""]]}], "out": "Обрано пункт 7\n", "ev": [["commands[i]", "'x'", true]], "cap": "Нова ітерація. Зверніть увагу: CPython стрибнув одразу сюди, оминувши рядок 3, бо перевіряти `True` немає сенсу. choice = 'x'."}, {"l": 5, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "2", ""], ["choice", "'x'", ""]]}], "out": "Обрано пункт 7\n", "ev": [], "cap": "Зсуваємо індекс."}, {"l": 6, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "2", ""], ["choice", "'x'", ""]]}], "out": "Обрано пункт 7\n", "ev": [["choice == '0'", "False", false]], "cap": "Це не \"0\", тому break пропускаємо."}, {"l": 8, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "2", ""], ["choice", "'x'", ""]]}], "out": "Обрано пункт 7\n", "ev": [["not choice.isdigit()", "True", true]], "cap": "Команда не є числом, тож спрацює continue."}, {"l": 9, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "2", ""], ["choice", "'x'", ""]]}], "out": "Обрано пункт 7\n", "ev": [], "cap": "continue пропускає решту тіла і повертає виконання на початок циклу."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "2", ""], ["choice", "'x'", ""]]}], "out": "Обрано пункт 7\n", "ev": [], "cap": "`while True:` має завжди істинну умову, тому вийти з такого циклу можна лише через break (або виняток)."}, {"l": 4, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "2", ""], ["choice", "'3'", ""]]}], "out": "Обрано пункт 7\n", "ev": [["commands[i]", "'3'", true]], "cap": "Нова ітерація. Зверніть увагу: CPython стрибнув одразу сюди, оминувши рядок 3, бо перевіряти `True` немає сенсу. choice = '3'."}, {"l": 5, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "3", ""], ["choice", "'3'", ""]]}], "out": "Обрано пункт 7\n", "ev": [], "cap": "Зсуваємо індекс."}, {"l": 6, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "3", ""], ["choice", "'3'", ""]]}], "out": "Обрано пункт 7\n", "ev": [["choice == '0'", "False", false]], "cap": "Це не \"0\", тому break пропускаємо."}, {"l": 8, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "3", ""], ["choice", "'3'", ""]]}], "out": "Обрано пункт 7\n", "ev": [["not choice.isdigit()", "False", false]], "cap": "Команда є числом, тому continue пропускаємо."}, {"l": 10, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "3", ""], ["choice", "'3'", ""]]}], "out": "Обрано пункт 7\nОбрано пункт 3\n", "ev": [], "cap": "Обробляємо коректну команду."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "3", ""], ["choice", "'3'", ""]]}], "out": "Обрано пункт 7\nОбрано пункт 3\n", "ev": [], "cap": "`while True:` має завжди істинну умову, тому вийти з такого циклу можна лише через break (або виняток)."}, {"l": 4, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "3", ""], ["choice", "'0'", ""]]}], "out": "Обрано пункт 7\nОбрано пункт 3\n", "ev": [["commands[i]", "'0'", true]], "cap": "Нова ітерація. Зверніть увагу: CPython стрибнув одразу сюди, оминувши рядок 3, бо перевіряти `True` немає сенсу. choice = '0'."}, {"l": 5, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "4", ""], ["choice", "'0'", ""]]}], "out": "Обрано пункт 7\nОбрано пункт 3\n", "ev": [], "cap": "Зсуваємо індекс."}, {"l": 6, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "4", ""], ["choice", "'0'", ""]]}], "out": "Обрано пункт 7\nОбрано пункт 3\n", "ev": [["choice == '0'", "True", true]], "cap": "Команда \"0\", тож зараз буде break."}, {"l": 7, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "4", ""], ["choice", "'0'", ""]]}], "out": "Обрано пункт 7\nОбрано пункт 3\n", "ev": [], "cap": "break миттєво перериває найближчий цикл. Виконання стрибає за його межі."}, {"l": 11, "k": "line", "f": [{"fn": "модуль", "vars": [["commands", "['7', 'x', '3', '0']", ""], ["i", "4", ""], ["choice", "'0'", ""]]}], "out": "Обрано пункт 7\nОбрано пункт 3\nВихід\n", "ev": [], "cap": "Ми тут завдяки break."}]}], "iter": false}], "ops": [{"ex": "n = 3\nwhile n > 0:\n    print(n)\n    n -= 1\nn", "out": "0", "err": false, "stdout": "3\n2\n1\n", "note": "Після циклу умова хибна: n == 0."}, {"ex": "stack = [1, 2, 3]\nwhile stack:\n    print(stack.pop())", "out": "", "err": false, "stdout": "3\n2\n1\n", "note": "Порожній список хибний, тож цикл триває, доки список не спорожніє."}, {"ex": "i = 0\nwhile i < 3:\n    i += 1\nelse:\n    print(\"без break, i =\", i)", "out": "", "err": false, "stdout": "без break, i = 3\n", "note": "while…else: else виконується, якщо цикл завершився без break."}, {"ex": "i = 0\nwhile i < 10:\n    i += 1\n    if i == 3:\n        break\nelse:\n    print(\"не надрукується\")\ni", "out": "3", "err": false, "stdout": "", "note": "break пропускає else."}, {"ex": "i = 0\nwhile i < 6:\n    i += 1\n    if i % 2:\n        continue\n    print(i)", "out": "", "err": false, "stdout": "2\n4\n6\n", "note": "continue спершу інкремент, потім пропуск. Інакше отримаєте нескінченний цикл."}, {"ex": "n = 1\nsteps = 0\nwhile n < 1000:\n    n *= 2\n    steps += 1\nsteps, n", "out": "(10, 1024)", "err": false, "stdout": "", "note": "while підходить, коли кількість ітерацій наперед невідома."}, {"ex": "attempts = 0\nwhile (attempts := attempts + 1) < 3:\n    pass\nattempts", "out": "3", "err": false, "stdout": "", "note": "Моржовий оператор в умові while."}, {"ex": "import itertools\nlist(itertools.islice(itertools.count(10, 5), 4))", "out": "[10, 15, 20, 25]", "err": false, "stdout": "", "note": "Безкінечні послідовності краще обмежувати явно."}]}, "for": {"title": "for", "label": "for", "tagline": "Обходить будь-який ітерований об'єкт: список, рядок, словник, range, файл. Лічильника немає: for просить в ітератора наступний елемент, поки той не скаже StopIteration.", "chips": ["for x in iterable", "range()", "enumerate()", "zip()", "dict.items()", "for … else"], "flags": {"Створює область видимості": "ні", "Кількість ітерацій": "= кількість елементів", "Працює з": "будь-яким iterable"}, "syntax": "for змінна in ітерований_об'єкт:\n    ...            # змінна = наступний елемент\nelse:\n    ...            # якщо цикл завершився БЕЗ break\n\n# що робить for «під капотом»\nit = iter(колекція)\nwhile True:\n    try:\n        змінна = next(it)\n    except StopIteration:\n        break\n    ...", "props": [{"t": "Ітераційний протокол", "d": "`for` викликає `iter()` для об'єкта, а потім `next()` на кожному кроці. Коли елементи закінчуються, `StopIteration` тихо завершує цикл."}, {"t": "range лінивий", "d": "`range(10**9)` не займає пам'ять під мільярд чисел: значення обчислюються на льоту. stop не входить у діапазон."}, {"t": "enumerate замість range(len())", "d": "`for i, x in enumerate(items)` читається краще і не ламається на об'єктах без індексів."}, {"t": "Не змінюйте колекцію під час обходу", "d": "Видалення зі списку зсуває індекси, і елементи пропускаються. Для словника чи множини отримаєте `RuntimeError`. Обходьте копію або будуйте новий список."}, {"t": "Розпакування", "d": "`for key, value in d.items()` або `for x, y in points`: кожен елемент розпаковується в кілька змінних."}, {"t": "for … else", "d": "else виконується, якщо цикл пройшов усі елементи без break. Класичний пошук: знайшли — break, не знайшли — else."}], "scenarios": [{"name": "Обхід списку", "desc": "for не має лічильника: він просить в ітератора наступний елемент, доки ті не скінчаться.", "variants": [{"label": "3 пакети", "code": "packages = [\"requests\", \"flask\", \"pydantic\"]\nfor name in packages:\n    print(\"-\", name)\nprint(\"Готово, name =\", name)", "steps": [{"l": 1, "k": "line", "f": [{"fn": "модуль", "vars": [["packages", "['requests', 'flask', 'pydantic']", ""]]}], "out": "", "ev": [], "cap": "Створюємо список."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["packages", "['requests', 'flask', 'pydantic']", ""], ["name", "'requests'", ""]]}], "out": "", "ev": [], "it": {"items": ["'requests'", "'flask'", "'pydantic'"], "pos": 0}, "cap": "for спершу викликає iter() для колекції і отримує ітератор. next(ітератор) повертає наступний елемент, і він присвоюється змінній name = 'requests'."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["packages", "['requests', 'flask', 'pydantic']", ""], ["name", "'requests'", ""]]}], "out": "- requests\n", "ev": [], "cap": "Тіло циклу виконується з поточним значенням name."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["packages", "['requests', 'flask', 'pydantic']", ""], ["name", "'flask'", ""]]}], "out": "- requests\n", "ev": [], "it": {"items": ["'requests'", "'flask'", "'pydantic'"], "pos": 1}, "cap": "next(ітератор) повертає наступний елемент, і він присвоюється змінній name = 'flask'."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["packages", "['requests', 'flask', 'pydantic']", ""], ["name", "'flask'", ""]]}], "out": "- requests\n- flask\n", "ev": [], "cap": "Тіло циклу виконується з поточним значенням name."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["packages", "['requests', 'flask', 'pydantic']", ""], ["name", "'pydantic'", ""]]}], "out": "- requests\n- flask\n", "ev": [], "it": {"items": ["'requests'", "'flask'", "'pydantic'"], "pos": 2}, "cap": "next(ітератор) повертає наступний елемент, і він присвоюється змінній name = 'pydantic'."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["packages", "['requests', 'flask', 'pydantic']", ""], ["name", "'pydantic'", ""]]}], "out": "- requests\n- flask\n- pydantic\n", "ev": [], "cap": "Тіло циклу виконується з поточним значенням name."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["packages", "['requests', 'flask', 'pydantic']", ""], ["name", "'pydantic'", ""]]}], "out": "- requests\n- flask\n- pydantic\n", "ev": [], "it": {"items": ["'requests'", "'flask'", "'pydantic'"], "pos": -1}, "cap": "Елементів більше немає. Ітератор кидає StopIteration, for тихо перехоплює його і завершує цикл."}, {"l": 4, "k": "line", "f": [{"fn": "модуль", "vars": [["packages", "['requests', 'flask', 'pydantic']", ""], ["name", "'pydantic'", ""]]}], "out": "- requests\n- flask\n- pydantic\nГотово, name = pydantic\n", "ev": [], "cap": "Після циклу name досі існує і містить останній елемент: цикли не створюють власної області видимості."}]}], "iter": true}, {"name": "range(start, stop, step)", "desc": "range не створює список: він видає числа по одному, на вимогу. stop у результат не входить.", "variants": [{"label": "range(1, 10, 3)", "code": "total = 0\nfor i in range(1, 10, 3):\n    total += i\nprint(\"total =\", total)", "steps": [{"l": 1, "k": "line", "f": [{"fn": "модуль", "vars": [["total", "0", ""]]}], "out": "", "ev": [], "cap": "Акумулятор."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["total", "0", ""], ["i", "1", ""]]}], "out": "", "ev": [], "it": {"items": ["1", "4", "7"], "pos": 0}, "cap": "for спершу викликає iter() для колекції і отримує ітератор. next(ітератор) повертає наступний елемент, і він присвоюється змінній i = 1."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["total", "1", ""], ["i", "1", ""]]}], "out": "", "ev": [], "cap": "total = 1."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["total", "1", ""], ["i", "4", ""]]}], "out": "", "ev": [], "it": {"items": ["1", "4", "7"], "pos": 1}, "cap": "next(ітератор) повертає наступний елемент, і він присвоюється змінній i = 4."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["total", "5", ""], ["i", "4", ""]]}], "out": "", "ev": [], "cap": "total = 5."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["total", "5", ""], ["i", "7", ""]]}], "out": "", "ev": [], "it": {"items": ["1", "4", "7"], "pos": 2}, "cap": "next(ітератор) повертає наступний елемент, і він присвоюється змінній i = 7."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["total", "12", ""], ["i", "7", ""]]}], "out": "", "ev": [], "cap": "total = 12."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["total", "12", ""], ["i", "7", ""]]}], "out": "", "ev": [], "it": {"items": ["1", "4", "7"], "pos": -1}, "cap": "Елементів більше немає. Ітератор кидає StopIteration, for тихо перехоплює його і завершує цикл."}, {"l": 4, "k": "line", "f": [{"fn": "модуль", "vars": [["total", "12", ""], ["i", "7", ""]]}], "out": "total = 12\n", "ev": [], "cap": "range(1, 10, 3) дав 1, 4, 7. Число 10 не входить, бо stop не включається."}]}], "iter": true}, {"name": "continue, break і for…else", "desc": "Гілка else циклу виконується, лише якщо цикл дійшов до кінця сам, без break.", "variants": [{"label": "є CRITICAL", "code": "logs = [\"INFO\", \"# коментар\", \"CRITICAL\", \"WARN\"]\nfor line in logs:\n    if line.startswith(\"#\"):\n        continue\n    if line == \"CRITICAL\":\n        print(\"Знайдено критичну помилку!\")\n        break\n    print(\"ok:\", line)\nelse:\n    print(\"Критичних помилок немає\")\nprint(\"Кінець\")", "steps": [{"l": 1, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'CRITICAL', 'WARN']", ""]]}], "out": "", "ev": [], "cap": "Рядки журналу."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'CRITICAL', 'WARN']", ""], ["line", "'INFO'", ""]]}], "out": "", "ev": [], "it": {"items": ["'INFO'", "'# коментар'", "'CRITICAL'", "'WARN'"], "pos": 0}, "cap": "for спершу викликає iter() для колекції і отримує ітератор. next(ітератор) повертає наступний елемент, і він присвоюється змінній line = 'INFO'."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'CRITICAL', 'WARN']", ""], ["line", "'INFO'", ""]]}], "out": "", "ev": [["line.startswith('#')", "False", false]], "cap": "Не коментар."}, {"l": 5, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'CRITICAL', 'WARN']", ""], ["line", "'INFO'", ""]]}], "out": "", "ev": [["line == 'CRITICAL'", "False", false]], "cap": "Не CRITICAL, тож рухаємося далі."}, {"l": 8, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'CRITICAL', 'WARN']", ""], ["line", "'INFO'", ""]]}], "out": "ok: INFO\n", "ev": [], "cap": "Звичайний рядок."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'CRITICAL', 'WARN']", ""], ["line", "'# коментар'", ""]]}], "out": "ok: INFO\n", "ev": [], "it": {"items": ["'INFO'", "'# коментар'", "'CRITICAL'", "'WARN'"], "pos": 1}, "cap": "next(ітератор) повертає наступний елемент, і він присвоюється змінній line = '# коментар'."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'CRITICAL', 'WARN']", ""], ["line", "'# коментар'", ""]]}], "out": "ok: INFO\n", "ev": [["line.startswith('#')", "True", true]], "cap": "Це коментар."}, {"l": 4, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'CRITICAL', 'WARN']", ""], ["line", "'# коментар'", ""]]}], "out": "ok: INFO\n", "ev": [], "cap": "continue: решта тіла пропускається, переходимо до наступного елемента."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'CRITICAL', 'WARN']", ""], ["line", "'CRITICAL'", ""]]}], "out": "ok: INFO\n", "ev": [], "it": {"items": ["'INFO'", "'# коментар'", "'CRITICAL'", "'WARN'"], "pos": 2}, "cap": "next(ітератор) повертає наступний елемент, і він присвоюється змінній line = 'CRITICAL'."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'CRITICAL', 'WARN']", ""], ["line", "'CRITICAL'", ""]]}], "out": "ok: INFO\n", "ev": [["line.startswith('#')", "False", false]], "cap": "Не коментар."}, {"l": 5, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'CRITICAL', 'WARN']", ""], ["line", "'CRITICAL'", ""]]}], "out": "ok: INFO\n", "ev": [["line == 'CRITICAL'", "True", true]], "cap": "Знайдено CRITICAL!"}, {"l": 6, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'CRITICAL', 'WARN']", ""], ["line", "'CRITICAL'", ""]]}], "out": "ok: INFO\nЗнайдено критичну помилку!\n", "ev": [], "cap": "Повідомляємо про знахідку."}, {"l": 7, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'CRITICAL', 'WARN']", ""], ["line", "'CRITICAL'", ""]]}], "out": "ok: INFO\nЗнайдено критичну помилку!\n", "ev": [], "cap": "break перериває цикл. Через це гілку else буде ПРОПУЩЕНО, а WARN так і не буде оброблено."}, {"l": 11, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'CRITICAL', 'WARN']", ""], ["line", "'CRITICAL'", ""]]}], "out": "ok: INFO\nЗнайдено критичну помилку!\nКінець\n", "ev": [], "cap": "Код після циклу."}]}, {"label": "без CRITICAL", "code": "logs = [\"INFO\", \"# коментар\", \"WARN\"]\nfor line in logs:\n    if line.startswith(\"#\"):\n        continue\n    if line == \"CRITICAL\":\n        print(\"Знайдено критичну помилку!\")\n        break\n    print(\"ok:\", line)\nelse:\n    print(\"Критичних помилок немає\")\nprint(\"Кінець\")", "steps": [{"l": 1, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'WARN']", ""]]}], "out": "", "ev": [], "cap": "Рядки журналу."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'WARN']", ""], ["line", "'INFO'", ""]]}], "out": "", "ev": [], "it": {"items": ["'INFO'", "'# коментар'", "'WARN'"], "pos": 0}, "cap": "for спершу викликає iter() для колекції і отримує ітератор. next(ітератор) повертає наступний елемент, і він присвоюється змінній line = 'INFO'."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'WARN']", ""], ["line", "'INFO'", ""]]}], "out": "", "ev": [["line.startswith('#')", "False", false]], "cap": "Не коментар."}, {"l": 5, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'WARN']", ""], ["line", "'INFO'", ""]]}], "out": "", "ev": [["line == 'CRITICAL'", "False", false]], "cap": "Не CRITICAL, тож рухаємося далі."}, {"l": 8, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'WARN']", ""], ["line", "'INFO'", ""]]}], "out": "ok: INFO\n", "ev": [], "cap": "Звичайний рядок."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'WARN']", ""], ["line", "'# коментар'", ""]]}], "out": "ok: INFO\n", "ev": [], "it": {"items": ["'INFO'", "'# коментар'", "'WARN'"], "pos": 1}, "cap": "next(ітератор) повертає наступний елемент, і він присвоюється змінній line = '# коментар'."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'WARN']", ""], ["line", "'# коментар'", ""]]}], "out": "ok: INFO\n", "ev": [["line.startswith('#')", "True", true]], "cap": "Це коментар."}, {"l": 4, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'WARN']", ""], ["line", "'# коментар'", ""]]}], "out": "ok: INFO\n", "ev": [], "cap": "continue: решта тіла пропускається, переходимо до наступного елемента."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'WARN']", ""], ["line", "'WARN'", ""]]}], "out": "ok: INFO\n", "ev": [], "it": {"items": ["'INFO'", "'# коментар'", "'WARN'"], "pos": 2}, "cap": "next(ітератор) повертає наступний елемент, і він присвоюється змінній line = 'WARN'."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'WARN']", ""], ["line", "'WARN'", ""]]}], "out": "ok: INFO\n", "ev": [["line.startswith('#')", "False", false]], "cap": "Не коментар."}, {"l": 5, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'WARN']", ""], ["line", "'WARN'", ""]]}], "out": "ok: INFO\n", "ev": [["line == 'CRITICAL'", "False", false]], "cap": "Не CRITICAL, тож рухаємося далі."}, {"l": 8, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'WARN']", ""], ["line", "'WARN'", ""]]}], "out": "ok: INFO\nok: WARN\n", "ev": [], "cap": "Звичайний рядок."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'WARN']", ""], ["line", "'WARN'", ""]]}], "out": "ok: INFO\nok: WARN\n", "ev": [], "it": {"items": ["'INFO'", "'# коментар'", "'WARN'"], "pos": -1}, "cap": "Елементів більше немає. Ітератор кидає StopIteration, for тихо перехоплює його і завершує цикл."}, {"l": 10, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'WARN']", ""], ["line", "'WARN'", ""]]}], "out": "ok: INFO\nok: WARN\nКритичних помилок немає\n", "ev": [], "cap": "Цикл вичерпав усі елементи без break, тому виконується else."}, {"l": 11, "k": "line", "f": [{"fn": "модуль", "vars": [["logs", "['INFO', '# коментар', 'WARN']", ""], ["line", "'WARN'", ""]]}], "out": "ok: INFO\nok: WARN\nКритичних помилок немає\nКінець\n", "ev": [], "cap": "Код після циклу."}]}], "iter": true}], "ops": [{"ex": "list(range(5)), list(range(2, 10, 3)), list(range(5, 0, -1))", "out": "([0, 1, 2, 3, 4], [2, 5, 8], [5, 4, 3, 2, 1])", "err": false, "stdout": "", "note": "range(stop), range(start, stop, step). stop не входить."}, {"ex": "for i, ch in enumerate(\"abc\", start=1):\n    print(i, ch)", "out": "", "err": false, "stdout": "1 a\n2 b\n3 c\n", "note": "enumerate дає пари (індекс, елемент). Краще, ніж `range(len(...))`."}, {"ex": "for code, city in zip([\"UA\", \"PL\"], [\"Київ\", \"Варшава\"]):\n    print(code, city)", "out": "", "err": false, "stdout": "UA Київ\nPL Варшава\n", "note": "zip іде паралельно кількома колекціями."}, {"ex": "list(zip([1, 2, 3], \"ab\"))", "out": "[(1, 'a'), (2, 'b')]", "err": false, "stdout": "", "note": "zip зупиняється на найкоротшій. Для суворої перевірки є zip(..., strict=True)."}, {"ex": "prices = {\"кава\": 60, \"чай\": 40}\nfor name, price in prices.items():\n    print(name, price)", "out": "", "err": false, "stdout": "кава 60\nчай 40\n", "note": "Звичайний обхід словника дає ключі, .items() — пари, .values() — значення."}, {"ex": "for i in range(3):\n    pass\ni", "out": "2", "err": false, "stdout": "", "note": "Змінна циклу живе і після нього."}, {"ex": "nums = [1, 2, 2, 3]\nfor n in nums:\n    if n == 2:\n        nums.remove(n)\nnums", "out": "[1, 2, 3]", "err": false, "stdout": "", "note": "Пастка: змінювати список під час обходу не можна, бо елементи пропускаються. Обходьте копію: `for n in nums[:]`."}, {"ex": "d = {\"a\": 1}\nfor k in d:\n    d[\"b\"] = 2", "out": "RuntimeError: dictionary changed size during iteration", "err": true, "stdout": "", "note": "Змінювати розмір словника під час обходу заборонено."}, {"ex": "[x * x for x in range(6) if x % 2 == 0]", "out": "[0, 4, 16]", "err": false, "stdout": "", "note": "Генератор списку (list comprehension) — компактна форма for + if + append."}, {"ex": "for row in range(1, 3):\n    for col in range(1, 4):\n        print(row * col, end=\" \")\n    print()", "out": "", "err": false, "stdout": "1 2 3 \n2 4 6 \n", "note": "Вкладені цикли: внутрішній проходить повністю на кожній ітерації зовнішнього."}, {"ex": "for x in sorted([3, 1, 2], reverse=True):\n    print(x, end=\" \")", "out": "", "err": false, "stdout": "3 2 1 ", "note": "sorted() і reversed() повертають нову послідовність для обходу, оригінал не змінюється."}, {"ex": "for _ in range(3):\n    print(\"ping\")", "out": "", "err": false, "stdout": "ping\nping\nping\n", "note": "`_` — домовленість для змінної, яка не потрібна."}]}, "try": {"title": "try", "label": "try / except", "tagline": "Обробка винятків. Коли щось іде не так, Python кидає об'єкт-виняток, і той летить угору стеком викликів, поки його не перехопить відповідний except. Якщо обробника не знайдеться, програма падає з трейсбеком.", "chips": ["try", "except Тип as e", "else", "finally", "raise", "raise … from"], "flags": {"Обов'язкові частини": "try + except або finally", "except виконується": "≤ 1", "finally": "завжди"}, "syntax": "try:\n    ...                       # код, що може кинути виняток\nexcept ValueError as e:       # конкретний тип\n    ...\nexcept (KeyError, TypeError): # кілька типів\n    ...\nelse:\n    ...                       # якщо винятку НЕ було\nfinally:\n    ...                       # завжди: прибирання, закриття\n\nraise ValueError(\"повідомлення\")   # кинути виняток", "props": [{"t": "Ловіть конкретне", "d": "`except ValueError:` замість голого `except:`. Голий except ловить навіть Ctrl+C і `SystemExit` та ховає справжні баги."}, {"t": "Порядок except важливий", "d": "Обробники перевіряються згори донизу, і спрацьовує перший відповідний. Підкласи ставте ВИЩЕ батьківських класів."}, {"t": "Мінімальний try", "d": "У try тримайте лише рядок, що може впасти. Подальшу логіку переносьте в else, щоб випадково не перехопити чужу помилку."}, {"t": "finally для прибирання", "d": "Закриття файлів і з'єднань. Ще краще — `with open(...) as f:`, який закриє файл сам."}, {"t": "Розкручування стеку", "d": "Виняток, не оброблений у функції, виходить у місце її виклику. Кадри функцій знищуються по дорозі, а трейсбек показує весь цей шлях."}, {"t": "EAFP", "d": "«Легше попросити вибачення, ніж дозволу»: у Python типово спробувати дію і обробити виняток, а не перевіряти все наперед."}], "scenarios": [{"name": "try / except / else / finally", "desc": "Порівняйте шлях виконання без винятку і з винятком.", "variants": [{"label": "text = \"42\"", "code": "text = \"42\"\ntry:\n    number = int(text)\nexcept ValueError as e:\n    print(\"Помилка:\", e)\n    number = 0\nelse:\n    print(\"Успіх:\", number)\nfinally:\n    print(\"finally виконується завжди\")\nprint(\"Результат:\", number)", "steps": [{"l": 1, "k": "line", "f": [{"fn": "модуль", "vars": [["text", "'42'", ""]]}], "out": "", "ev": [], "cap": "text = '42'."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["text", "'42'", ""]]}], "out": "", "ev": [], "cap": "Входимо в блок try. Якщо всередині виникне виняток, Python шукатиме обробник серед except нижче."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["text", "'42'", ""], ["number", "42", ""]]}], "out": "", "ev": [["text", "'42'", true]], "cap": "Перетворення вдалося: number = 42. Винятку немає, тому except пропускаються."}, {"l": 8, "k": "line", "f": [{"fn": "модуль", "vars": [["text", "'42'", ""], ["number", "42", ""]]}], "out": "Успіх: 42\n", "ev": [], "cap": "else виконується, лише якщо в try НЕ виникло винятку. Сюди варто класти код, якого не треба захищати try."}, {"l": 10, "k": "line", "f": [{"fn": "модуль", "vars": [["text", "'42'", ""], ["number", "42", ""]]}], "out": "Успіх: 42\nfinally виконується завжди\n", "ev": [], "cap": "finally виконується завжди: після успіху, після обробленої помилки і навіть після return чи необробленого винятку."}, {"l": 11, "k": "line", "f": [{"fn": "модуль", "vars": [["text", "'42'", ""], ["number", "42", ""]]}], "out": "Успіх: 42\nfinally виконується завжди\nРезультат: 42\n", "ev": [], "cap": "Програма продовжує роботу."}]}, {"label": "text = \"abc\"", "code": "text = \"abc\"\ntry:\n    number = int(text)\nexcept ValueError as e:\n    print(\"Помилка:\", e)\n    number = 0\nelse:\n    print(\"Успіх:\", number)\nfinally:\n    print(\"finally виконується завжди\")\nprint(\"Результат:\", number)", "steps": [{"l": 1, "k": "line", "f": [{"fn": "модуль", "vars": [["text", "'abc'", ""]]}], "out": "", "ev": [], "cap": "text = 'abc'."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["text", "'abc'", ""]]}], "out": "", "ev": [], "cap": "Входимо в блок try. Якщо всередині виникне виняток, Python шукатиме обробник серед except нижче."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["text", "'abc'", ""]]}], "out": "", "ev": [["text", "'abc'", true]], "exc": "ValueError: invalid literal for int() with base 10: 'abc'", "cap": "int('abc') не вдається, тож кидається ValueError. Решта try пропускається, і Python шукає відповідний except."}, {"l": 4, "k": "line", "f": [{"fn": "модуль", "vars": [["text", "'abc'", ""], ["e", "ValueError(\"invalid literal for int() with base…", ""]]}], "out": "", "ev": [], "cap": "Тип винятку збігається з ValueError, тож виконуємо цей обробник. Об'єкт винятку доступний як e."}, {"l": 5, "k": "line", "f": [{"fn": "модуль", "vars": [["text", "'abc'", ""], ["e", "ValueError(\"invalid literal for int() with base…", ""]]}], "out": "Помилка: invalid literal for int() with base 10: 'abc'\n", "ev": [], "cap": "Обробляємо помилку."}, {"l": 6, "k": "line", "f": [{"fn": "модуль", "vars": [["text", "'abc'", ""], ["number", "0", ""]]}], "out": "Помилка: invalid literal for int() with base 10: 'abc'\n", "ev": [], "cap": "Значення за замовчуванням."}, {"l": 10, "k": "line", "f": [{"fn": "модуль", "vars": [["text", "'abc'", ""], ["number", "0", ""]]}], "out": "Помилка: invalid literal for int() with base 10: 'abc'\nfinally виконується завжди\n", "ev": [], "cap": "finally виконується завжди: після успіху, після обробленої помилки і навіть після return чи необробленого винятку."}, {"l": 11, "k": "line", "f": [{"fn": "модуль", "vars": [["text", "'abc'", ""], ["number", "0", ""]]}], "out": "Помилка: invalid literal for int() with base 10: 'abc'\nfinally виконується завжди\nРезультат: 0\n", "ev": [], "cap": "Програма продовжує роботу. Змінної e вже немає: після блоку except Python автоматично її видаляє."}]}], "iter": false}, {"name": "Виняток летить стеком викликів", "desc": "Якщо у функції немає відповідного except, виняток виходить з неї в місце виклику, і так далі вгору стеком.", "variants": [{"label": "немає port", "code": "def load_port(config):\n    return config[\"port\"]\n\ndef start(config):\n    port = load_port(config)\n    print(\"Старт на порту\", port)\n\ntry:\n    start({\"host\": \"localhost\"})\nexcept KeyError as e:\n    print(\"Немає ключа:\", e)\nprint(\"Програма працює далі\")", "steps": [{"l": 1, "k": "line", "f": [{"fn": "модуль", "vars": [["load_port", "функція load_port()", "fn"]]}], "out": "", "ev": [], "cap": "def лише створює об'єкт функції і зв'язує його з ім'ям load_port. Тіло поки не виконується."}, {"l": 4, "k": "line", "f": [{"fn": "модуль", "vars": [["load_port", "функція load_port()", "fn"], ["start", "функція start()", "fn"]]}], "out": "", "ev": [], "cap": "Так само створюється функція start."}, {"l": 8, "k": "line", "f": [{"fn": "модуль", "vars": [["load_port", "функція load_port()", "fn"], ["start", "функція start()", "fn"]]}], "out": "", "ev": [], "cap": "Входимо в try."}, {"l": 9, "k": "line", "f": [{"fn": "модуль", "vars": [["load_port", "функція load_port()", "fn"], ["start", "функція start()", "fn"]]}, {"fn": "start()", "vars": [["config", "{'host': 'localhost'}", ""]]}], "out": "", "ev": [], "cap": "Виклик start(...): у стеку з'являється новий кадр зі своїми локальними змінними."}, {"l": 5, "k": "line", "f": [{"fn": "модуль", "vars": [["load_port", "функція load_port()", "fn"], ["start", "функція start()", "fn"]]}, {"fn": "start()", "vars": [["config", "{'host': 'localhost'}", ""]]}, {"fn": "load_port()", "vars": [["config", "{'host': 'localhost'}", ""]]}], "out": "", "ev": [], "cap": "start викликає load_port, і ще один кадр стає на вершину стеку."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["load_port", "функція load_port()", "fn"], ["start", "функція start()", "fn"]]}, {"fn": "start()", "vars": [["config", "{'host': 'localhost'}", ""]]}, {"fn": "load_port()", "vars": [["config", "{'host': 'localhost'}", ""]]}], "out": "", "ev": [], "exc": "KeyError: 'port'", "cap": "Ключа 'port' немає, тож виникає KeyError. У load_port немає try, тому виняток виходить із функції, а її кадр зникає."}, {"l": 5, "k": "unwind", "f": [{"fn": "модуль", "vars": [["load_port", "функція load_port()", "fn"], ["start", "функція start()", "fn"]]}, {"fn": "start()", "vars": [["config", "{'host': 'localhost'}", ""]]}], "out": "", "ev": [], "exc": "KeyError: 'port'", "cap": "Виняток прилетів у start. Тут теж немає try, тому кадр start знищується, а виняток летить далі."}, {"l": 9, "k": "unwind", "f": [{"fn": "модуль", "vars": [["load_port", "функція load_port()", "fn"], ["start", "функція start()", "fn"]]}], "out": "", "ev": [], "exc": "KeyError: 'port'", "cap": "Виняток дійшов до модуля, а тут є try. Шукаємо відповідний except."}, {"l": 10, "k": "line", "f": [{"fn": "модуль", "vars": [["load_port", "функція load_port()", "fn"], ["start", "функція start()", "fn"], ["e", "KeyError('port')", ""]]}], "out": "", "ev": [], "cap": "KeyError збігається з типом в except, тож виняток оброблено."}, {"l": 11, "k": "line", "f": [{"fn": "модуль", "vars": [["load_port", "функція load_port()", "fn"], ["start", "функція start()", "fn"]]}], "out": "Немає ключа: 'port'\n", "ev": [], "cap": "Обробник виконується в кадрі модуля. Кадри start і load_port уже знищено."}, {"l": 12, "k": "line", "f": [{"fn": "модуль", "vars": [["load_port", "функція load_port()", "fn"], ["start", "функція start()", "fn"]]}], "out": "Немає ключа: 'port'\nПрограма працює далі\n", "ev": [], "cap": "Після обробки програма продовжує роботу."}]}, {"label": "є port", "code": "def load_port(config):\n    return config[\"port\"]\n\ndef start(config):\n    port = load_port(config)\n    print(\"Старт на порту\", port)\n\ntry:\n    start({\"host\": \"localhost\", \"port\": 8000})\nexcept KeyError as e:\n    print(\"Немає ключа:\", e)\nprint(\"Програма працює далі\")", "steps": [{"l": 1, "k": "line", "f": [{"fn": "модуль", "vars": [["load_port", "функція load_port()", "fn"]]}], "out": "", "ev": [], "cap": "def лише створює об'єкт функції і зв'язує його з ім'ям load_port. Тіло поки не виконується."}, {"l": 4, "k": "line", "f": [{"fn": "модуль", "vars": [["load_port", "функція load_port()", "fn"], ["start", "функція start()", "fn"]]}], "out": "", "ev": [], "cap": "Так само створюється функція start."}, {"l": 8, "k": "line", "f": [{"fn": "модуль", "vars": [["load_port", "функція load_port()", "fn"], ["start", "функція start()", "fn"]]}], "out": "", "ev": [], "cap": "Входимо в try."}, {"l": 9, "k": "line", "f": [{"fn": "модуль", "vars": [["load_port", "функція load_port()", "fn"], ["start", "функція start()", "fn"]]}, {"fn": "start()", "vars": [["config", "{'host': 'localhost', 'port': 8000}", ""]]}], "out": "", "ev": [], "cap": "Виклик start(...): у стеку з'являється новий кадр зі своїми локальними змінними."}, {"l": 5, "k": "line", "f": [{"fn": "модуль", "vars": [["load_port", "функція load_port()", "fn"], ["start", "функція start()", "fn"]]}, {"fn": "start()", "vars": [["config", "{'host': 'localhost', 'port': 8000}", ""]]}, {"fn": "load_port()", "vars": [["config", "{'host': 'localhost', 'port': 8000}", ""]]}], "out": "", "ev": [], "cap": "start викликає load_port, і ще один кадр стає на вершину стеку."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["load_port", "функція load_port()", "fn"], ["start", "функція start()", "fn"]]}, {"fn": "start()", "vars": [["config", "{'host': 'localhost', 'port': 8000}", ""], ["port", "8000", ""]]}], "out": "", "ev": [], "ret": "8000", "rfn": "load_port", "cap": "Повертаємо 8000. Кадр load_port знімається зі стеку, і результат присвоюється port у start."}, {"l": 6, "k": "line", "f": [{"fn": "модуль", "vars": [["load_port", "функція load_port()", "fn"], ["start", "функція start()", "fn"]]}], "out": "Старт на порту 8000\n", "ev": [], "ret": "None", "rfn": "start", "cap": "start продовжує роботу як звичайно."}, {"l": 12, "k": "line", "f": [{"fn": "модуль", "vars": [["load_port", "функція load_port()", "fn"], ["start", "функція start()", "fn"]]}], "out": "Старт на порту 8000\nПрограма працює далі\n", "ev": [], "cap": "Після обробки програма продовжує роботу."}]}], "iter": false}, {"name": "raise: власний виняток", "desc": "raise дає змогу повідомити про помилку з будь-якого місця. Хто саме її обробить, вирішує код, що викликав функцію.", "variants": [{"label": "amount = 250", "code": "def withdraw(balance, amount):\n    if amount > balance:\n        raise ValueError(\"Недостатньо коштів\")\n    return balance - amount\n\ntry:\n    left = withdraw(100, 250)\n    print(\"Залишок:\", left)\nexcept ValueError as e:\n    print(\"Відмова:\", e)", "steps": [{"l": 1, "k": "line", "f": [{"fn": "модуль", "vars": [["withdraw", "функція withdraw()", "fn"]]}], "out": "", "ev": [], "cap": "Створюємо функцію withdraw."}, {"l": 6, "k": "line", "f": [{"fn": "модуль", "vars": [["withdraw", "функція withdraw()", "fn"]]}], "out": "", "ev": [], "cap": "Входимо в try."}, {"l": 7, "k": "line", "f": [{"fn": "модуль", "vars": [["withdraw", "функція withdraw()", "fn"]]}, {"fn": "withdraw()", "vars": [["balance", "100", ""], ["amount", "250", ""]]}], "out": "", "ev": [], "cap": "Викликаємо withdraw(100, ...)."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["withdraw", "функція withdraw()", "fn"]]}, {"fn": "withdraw()", "vars": [["balance", "100", ""], ["amount", "250", ""]]}], "out": "", "ev": [["amount > balance", "True", true]], "cap": "Сума більша за баланс."}, {"l": 3, "k": "line", "f": [{"fn": "модуль", "vars": [["withdraw", "функція withdraw()", "fn"]]}, {"fn": "withdraw()", "vars": [["balance", "100", ""], ["amount", "250", ""]]}], "out": "", "ev": [], "exc": "ValueError: Недостатньо коштів", "cap": "raise створює об'єкт ValueError і кидає його. Решта функції не виконується."}, {"l": 7, "k": "unwind", "f": [{"fn": "модуль", "vars": [["withdraw", "функція withdraw()", "fn"]]}], "out": "", "ev": [], "exc": "ValueError: Недостатньо коштів", "cap": "Виняток вилетів із withdraw сюди. Присвоєння left так і не відбулося, а print на рядку 8 буде пропущено."}, {"l": 9, "k": "line", "f": [{"fn": "модуль", "vars": [["withdraw", "функція withdraw()", "fn"], ["e", "ValueError('Недостатньо коштів')", ""]]}], "out": "", "ev": [], "cap": "ValueError збігається з типом в except, тож виняток перехоплено."}, {"l": 10, "k": "line", "f": [{"fn": "модуль", "vars": [["withdraw", "функція withdraw()", "fn"]]}], "out": "Відмова: Недостатньо коштів\n", "ev": [], "cap": "Обробляємо відмову."}]}, {"label": "amount = 30", "code": "def withdraw(balance, amount):\n    if amount > balance:\n        raise ValueError(\"Недостатньо коштів\")\n    return balance - amount\n\ntry:\n    left = withdraw(100, 30)\n    print(\"Залишок:\", left)\nexcept ValueError as e:\n    print(\"Відмова:\", e)", "steps": [{"l": 1, "k": "line", "f": [{"fn": "модуль", "vars": [["withdraw", "функція withdraw()", "fn"]]}], "out": "", "ev": [], "cap": "Створюємо функцію withdraw."}, {"l": 6, "k": "line", "f": [{"fn": "модуль", "vars": [["withdraw", "функція withdraw()", "fn"]]}], "out": "", "ev": [], "cap": "Входимо в try."}, {"l": 7, "k": "line", "f": [{"fn": "модуль", "vars": [["withdraw", "функція withdraw()", "fn"]]}, {"fn": "withdraw()", "vars": [["balance", "100", ""], ["amount", "30", ""]]}], "out": "", "ev": [], "cap": "Викликаємо withdraw(100, ...)."}, {"l": 2, "k": "line", "f": [{"fn": "модуль", "vars": [["withdraw", "функція withdraw()", "fn"]]}, {"fn": "withdraw()", "vars": [["balance", "100", ""], ["amount", "30", ""]]}], "out": "", "ev": [["amount > balance", "False", false]], "cap": "Коштів достатньо."}, {"l": 4, "k": "line", "f": [{"fn": "модуль", "vars": [["withdraw", "функція withdraw()", "fn"], ["left", "70", ""]]}], "out": "", "ev": [], "ret": "70", "rfn": "withdraw", "cap": "Повертаємо 70."}, {"l": 8, "k": "line", "f": [{"fn": "модуль", "vars": [["withdraw", "функція withdraw()", "fn"], ["left", "70", ""]]}], "out": "Залишок: 70\n", "ev": [], "cap": "Винятку не було, тож друкуємо залишок."}]}], "iter": false}], "ops": [{"ex": "int(\"abc\")", "out": "ValueError: invalid literal for int() with base 10: 'abc'", "err": true, "stdout": "", "note": "ValueError: тип правильний, а значення недоречне."}, {"ex": "\"5\" + 1", "out": "TypeError: can only concatenate str (not \"int\") to str", "err": true, "stdout": "", "note": "TypeError: операція не підтримується для цих типів."}, {"ex": "{\"a\": 1}[\"b\"]", "out": "KeyError: 'b'", "err": true, "stdout": "", "note": "KeyError: немає такого ключа. Безпечніше: `d.get('b')`."}, {"ex": "[1, 2][5]", "out": "IndexError: list index out of range", "err": true, "stdout": "", "note": "IndexError: індекс поза межами."}, {"ex": "10 / 0", "out": "ZeroDivisionError: division by zero", "err": true, "stdout": "", "note": "ZeroDivisionError — підклас ArithmeticError."}, {"ex": "print(undefined_name)", "out": "NameError: name 'undefined_name' is not defined", "err": true, "stdout": "", "note": "NameError: ім'я не визначене."}, {"ex": "try:\n    int(None)\nexcept (ValueError, TypeError) as e:\n    print(type(e).__name__, \"-\", e)", "out": "", "err": false, "stdout": "TypeError - int() argument must be a string, a bytes-like object or a real number, not 'NoneType'\n", "note": "Кілька типів в одному except записують кортежем."}, {"ex": "try:\n    1 / 0\nexcept Exception:\n    print(\"Exception\")\nexcept ZeroDivisionError:\n    print(\"ZeroDivisionError\")", "out": "", "err": false, "stdout": "Exception\n", "note": "Пастка: except перевіряються по черзі, тож широкий Exception першим «з'їдає» все. Конкретні типи ставте вище."}, {"ex": "def f():\n    try:\n        return \"з try\"\n    finally:\n        print(\"finally\")\n\nf()", "out": "'з try'", "err": false, "stdout": "finally\n", "note": "finally виконується навіть після return."}, {"ex": "try:\n    1 / 0\nexcept ZeroDivisionError as e:\n    pass\ne", "out": "NameError: name 'e' is not defined", "err": true, "stdout": "", "note": "Після except змінна e видаляється."}, {"ex": "class InsufficientFunds(Exception):\n    pass\n\ntry:\n    raise InsufficientFunds(\"Баланс 100, потрібно 250\")\nexcept InsufficientFunds as e:\n    print(\"Відмова:\", e)", "out": "", "err": false, "stdout": "Відмова: Баланс 100, потрібно 250\n", "note": "Власний виняток — це просто клас, що наслідує Exception."}, {"ex": "try:\n    try:\n        int(\"x\")\n    except ValueError as e:\n        raise RuntimeError(\"Поганий конфіг\") from e\nexcept RuntimeError as e:\n    print(repr(e), \"<-\", repr(e.__cause__))", "out": "", "err": false, "stdout": "RuntimeError('Поганий конфіг') <- ValueError(\"invalid literal for int() with base 10: 'x'\")\n", "note": "raise … from … зберігає причину (e.__cause__) у трейсбеку."}, {"ex": "try:\n    int(\"x\")\nexcept ValueError:\n    print(\"логуємо і кидаємо далі\")\n    raise", "out": "ValueError: invalid literal for int() with base 10: 'x'", "err": true, "stdout": "логуємо і кидаємо далі\n", "note": "raise без аргументів повторно кидає поточний виняток."}, {"ex": "issubclass(KeyError, LookupError), issubclass(KeyboardInterrupt, Exception)", "out": "(True, False)", "err": false, "stdout": "", "note": "Ctrl+C (KeyboardInterrupt) не є Exception, тому `except Exception` його не перехопить. Голий `except:` перехопить — і це погано."}], "tree": ["BaseException", [["SystemExit", []], ["KeyboardInterrupt", []], ["GeneratorExit", []], ["Exception", [["ArithmeticError", [["ZeroDivisionError", []], ["OverflowError", []]]], ["LookupError", [["IndexError", []], ["KeyError", []]]], ["ValueError", [["UnicodeError", []]]], ["TypeError", []], ["NameError", [["UnboundLocalError", []]]], ["AttributeError", []], ["OSError", [["FileNotFoundError", []], ["PermissionError", []], ["TimeoutError", []]]], ["RuntimeError", [["RecursionError", []], ["NotImplementedError", []]]], ["ImportError", [["ModuleNotFoundError", []]]], ["StopIteration", []], ["AssertionError", []]]]]]}}};
+
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const md = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
+const KW = new Set("False None True and as assert break case class continue def del elif else except finally for from global if import in is lambda match nonlocal not or pass raise return try while with yield".split(" "));
+const BI = new Set("abs all any bin bool chr dict divmod enumerate frozenset hash hex id input int isinstance issubclass iter len list max min next oct ord pow print range repr reversed round set sorted str sum tuple type zip".split(" "));
+function hl(code) {
+  const re = /(#[^\n]*)|([rbfRBF]{0,2}(?:'''[\s\S]*?'''|"""[\s\S]*?"""|'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"))|(\b\d[\d_]*(?:\.\d+)?\b)|([A-Za-z_][A-Za-z0-9_]*)/g;
+  let out = "", last = 0, m;
+  while ((m = re.exec(code))) {
+    out += esc(code.slice(last, m.index));
+    const [t, com, str, num, id] = m;
+    if (com) out += `<span class="tk-c">${esc(t)}</span>`;
+    else if (str) out += `<span class="tk-s">${esc(t)}</span>`;
+    else if (num) out += `<span class="tk-n">${esc(t)}</span>`;
+    else if (KW.has(id)) out += `<span class="tk-k">${esc(t)}</span>`;
+    else if ((BI.has(id) || /Error$|Exception$|^StopIteration$/.test(id)) && code[m.index - 1] !== ".") out += `<span class="tk-b">${esc(t)}</span>`;
+    else out += esc(t);
+    last = m.index + t.length;
+  }
+  return out + esc(code.slice(last));
+}
+function cell(item) {
+  return `<div class="cell">
+    <pre>${hl(item.ex)}</pre>
+    ${item.stdout ? `<div class="stdout">${esc(item.stdout.trimEnd())}</div>` : ""}
+    ${item.out ? `<div class="res${item.err ? " err" : ""}">${item.err ? esc(item.out) : hl(item.out)}</div>` : ""}
+    ${item.note ? `<div class="note">${md(item.note)}</div>` : ""}
+  </div>`;
+}
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------- step-through visualizer ---------- */
+class Viz {
+  constructor(root, tab) {
+    this.root = root; this.tab = tab; this.si = 0; this.vi = 0; this.i = 0; this.timer = null; this.speed = 1;
+    root.innerHTML = `
+      <div class="viz-top">
+        <div class="seg" data-r="sc" role="group" aria-label="Сценарій">${tab.scenarios.map((s, k) => `<button type="button" data-k="${k}">${esc(s.name)}</button>`).join("")}</div>
+      </div>
+      <p class="viz-desc" data-r="desc"></p>
+      <div class="viz-top" data-r="vrow"><span class="seg-l">Вхідні дані</span><div class="seg small" data-r="vars" role="group" aria-label="Вхідні дані"></div></div>
+      <div class="viz-grid">
+        <div>
+          <div class="code" data-r="code"></div>
+          <div class="cap" data-r="cap" aria-live="polite"></div>
+        </div>
+        <div class="state">
+          <div class="box" data-r="iterbox"><h4><span>Ітератор</span><span data-r="itn"></span></h4><div class="iter-row" data-r="iter"></div></div>
+          <div class="box"><h4><span data-r="memt">Змінні</span></h4><div class="frames" data-r="frames"></div></div>
+          <div class="box"><h4>Вивід (stdout)</h4><pre class="out" data-r="out"></pre></div>
+        </div>
+      </div>
+      <div class="ctl">
+        <button type="button" data-a="first" title="На початок" aria-label="На початок">⏮</button>
+        <button type="button" data-a="prev" title="Крок назад (←)" aria-label="Крок назад">◀</button>
+        <button type="button" data-a="play" class="play" title="Пуск / пауза (пробіл)" aria-label="Пуск">▶</button>
+        <button type="button" data-a="next" title="Крок уперед (→)" aria-label="Крок уперед">▶︎|</button>
+        <input type="range" min="0" value="0" data-r="scrub" aria-label="Крок">
+        <select data-r="speed" aria-label="Швидкість"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
+      </div>
+      <div class="legend"><span><i style="color:var(--accent)"></i>стрибок назад (цикл)</span><span><i style="color:var(--muted)"></i>стрибок уперед (пропуск коду)</span><span><i style="color:var(--err);border-top-style:dashed"></i>виняток</span></div>`;
+    this.r = {};
+    root.querySelectorAll("[data-r]").forEach(el => this.r[el.dataset.r] = el);
+    root.tabIndex = 0;
+    this.r.sc.addEventListener("click", e => { const b = e.target.closest("button"); if (b) this.load(+b.dataset.k, 0); });
+    this.r.vars.addEventListener("click", e => { const b = e.target.closest("button"); if (b) this.load(this.si, +b.dataset.k); });
+    root.querySelector(".ctl").addEventListener("click", e => {
+      const b = e.target.closest("button"); if (!b) return;
+      ({ first: () => { this.stop(); this.go(0); }, prev: () => { this.stop(); this.go(this.i - 1); },
+         next: () => { this.stop(); this.go(this.i + 1); }, play: () => this.toggle() })[b.dataset.a]();
+    });
+    this.r.scrub.addEventListener("input", () => { this.stop(); this.go(+this.r.scrub.value); });
+    this.r.speed.addEventListener("change", () => { this.speed = +this.r.speed.value; if (this.timer) { this.stop(); this.play(); } });
+    root.addEventListener("keydown", e => {
+      if (e.target.closest("button, select, input") && e.key === " ") return;
+      if (e.key === "ArrowRight") { e.preventDefault(); this.stop(); this.go(this.i + 1); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); this.stop(); this.go(this.i - 1); }
+      else if (e.key === " ") { e.preventDefault(); this.toggle(); }
+    });
+    this.load(0, 0);
+  }
+  get sc() { return this.tab.scenarios[this.si]; }
+  get v() { return this.sc.variants[this.vi]; }
+  load(si, vi) {
+    this.stop(); this.si = si; this.vi = vi;
+    [...this.r.sc.children].forEach((b, k) => b.setAttribute("aria-pressed", k === si));
+    this.r.desc.innerHTML = md(this.sc.desc);
+    this.r.vrow.hidden = this.sc.variants.length < 2;
+    this.r.vars.innerHTML = this.sc.variants.map((v, k) => `<button type="button" data-k="${k}" aria-pressed="${k === vi}">${esc(v.label)}</button>`).join("");
+    this.r.iterbox.hidden = !this.sc.iter;
+    const lines = this.v.code.split("\n");
+    this.r.code.innerHTML = `<svg class="jumps" height="${lines.length * 24}" aria-hidden="true">
+        <defs>${["back", "fwd", "exc"].map(k => `<marker id="ah-${k}-${this.uid()}" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:${k === "back" ? "var(--accent)" : k === "exc" ? "var(--err)" : "var(--muted)"}"/></marker>`).join("")}</defs><g></g></svg>` +
+      lines.map((t, k) => `<div class="ln" data-n="${k + 1}"><span class="no">${k + 1}</span><span class="src">${hl(t) || " "}</span></div>`).join("");
+    this.lns = [...this.r.code.querySelectorAll(".ln")];
+    this.r.scrub.max = this.v.steps.length - 1;
+    this.prevFrames = null;
+    this.go(0, true);
+  }
+  uid() { return this._uid || (this._uid = Math.random().toString(36).slice(2, 8)); }
+  go(i, fresh) {
+    const steps = this.v.steps;
+    i = Math.max(0, Math.min(steps.length - 1, i));
+    const back = !fresh && i < this.i;
+    const prev = fresh ? null : steps[this.i];
+    this.i = i;
+    const s = steps[i];
+    // code lines
+    const seen = new Set(steps.slice(0, i + 1).map(x => x.l));
+    this.lns.forEach((el, k) => {
+      const n = k + 1;
+      el.classList.toggle("seen", seen.has(n));
+      el.classList.toggle("cur", n === s.l);
+      el.classList.toggle("bad", n === s.l && !!s.exc);
+      const src = $(".src", el);
+      if (n === s.l && s.f.length > 1) src.dataset.badge = `у кадрі ${s.f[s.f.length - 1].fn}`; else delete src.dataset.badge;
+    });
+    // jump arrow (from previous executed line)
+    const g = $("svg g", this.r.code); g.innerHTML = "";
+    const from = i > 0 ? steps[i - 1].l : null;
+    if (from !== null && s.l !== from + 1) {
+      const y1 = (from - 1) * 24 + 12, y2 = (s.l - 1) * 24 + 12, d = Math.abs(s.l - from);
+      const kind = s.k === "unwind" || steps[i - 1].exc ? "exc" : s.l <= from ? "back" : "fwd";
+      const x = 30, bend = Math.max(4, x - 6 - Math.min(22, 4 + d * 3));
+      const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      p.setAttribute("d", s.l === from
+        ? `M${x},${y1 - 5} C${x - 22},${y1 - 14} ${x - 22},${y1 + 14} ${x},${y1 + 5}`
+        : `M${x},${y1} C${bend},${y1} ${bend},${y2} ${x},${y2}`);
+      p.setAttribute("class", `jump ${kind}`);
+      p.setAttribute("marker-end", `url(#ah-${kind}-${this.uid()})`);
+      g.appendChild(p);
+      if (!back && !REDUCED && kind !== "exc") { const len = p.getTotalLength(); p.style.strokeDasharray = len; p.style.setProperty("--len", len); p.classList.add("draw"); }
+    }
+    // caption
+    const pills = [];
+    s.ev.forEach(([expr, val, ok]) => pills.push(`<span class="pill ${ok === true ? "t" : ok === false ? "f" : "x"}">${esc(expr)} → ${esc(val)}</span>`));
+    if (s.exc) pills.push(`<span class="pill x">✕ ${esc(s.exc)}</span>`);
+    if (s.ret !== undefined) pills.push(`<span class="pill r">↩ ${esc(s.rfn)}() повертає ${esc(s.ret)}</span>`);
+    this.r.cap.className = "cap" + (s.exc ? " bad" : "");
+    this.r.cap.innerHTML = `<div class="cap-h"><span class="stepno">крок ${i + 1} з ${steps.length} · рядок ${s.l}${s.k === "unwind" ? " · розкручування стеку" : ""}</span>${pills.join("")}</div><p>${md(s.cap)}</p>`;
+    // iterator
+    if (this.sc.iter) {
+      const it = [...steps.slice(0, i + 1)].reverse().find(x => x.it)?.it;
+      const items = it ? it.items : steps.find(x => x.it).it.items;
+      const pos = it ? it.pos : null;
+      this.r.itn.textContent = pos === null ? "ще не створено" : pos === -1 ? "вичерпано" : `next() №${pos + 1}`;
+      const cur = s.it ? pos : (pos === null ? null : pos);
+      this.r.iter.innerHTML = items.map((x, k) => `<span class="it${pos !== null && (pos === -1 || k < pos) ? " done" : ""}${cur === k ? " now" : ""}">${esc(x)}</span>`).join("")
+        + `<span class="it stop${pos === -1 ? " now" : ""}">StopIteration</span>`;
+    }
+    // frames
+    const prevF = prev ? prev.f : null;
+    this.r.memt.textContent = s.f.length > 1 ? "Стек викликів і змінні" : "Змінні";
+    this.r.frames.innerHTML = s.f.map((fr, k) => {
+      const top = k === s.f.length - 1;
+      const old = prevF && prevF[k] && prevF[k].fn === fr.fn ? Object.fromEntries(prevF[k].vars.map(v => [v[0], v[1]])) : null;
+      const hurt = top && !!s.exc;
+      const rows = fr.vars.length ? fr.vars.map(([n, v, kind]) => `<tr class="${kind}${!back && old && old[n] !== v ? " chg" : ""}"><td>${esc(n)}</td><td><span class="v">${esc(v)}</span></td></tr>`).join("")
+        : `<tr><td class="empty" colspan="2">порожньо</td></tr>`;
+      const isNew = !back && prevF && (!prevF[k] || prevF[k].fn !== fr.fn);
+      return `<div class="frame${top ? " top" : ""}${hurt ? " hurt" : ""}${isNew ? " enter" : ""}"><div class="fn"><span>${esc(fr.fn)}</span>${hurt ? `<span>⚡ ${esc(s.exc.split(":")[0])}</span>` : ""}</div><table class="vt">${rows}</table></div>`;
+    }).join("");
+    // stdout
+    const before = i > 0 ? steps[i - 1].out : "";
+    const out = s.out;
+    this.r.out.innerHTML = out
+      ? (out.startsWith(before) && !back ? esc(before) + `<span class="new">${esc(out.slice(before.length))}</span>` : esc(out))
+      : `<span class="ph">поки порожньо</span>`;
+    this.r.out.scrollTop = this.r.out.scrollHeight;
+    // controls
+    this.r.scrub.value = i;
+    this.root.querySelector('[data-a="prev"]').disabled = this.root.querySelector('[data-a="first"]').disabled = i === 0;
+    this.root.querySelector('[data-a="next"]').disabled = i === steps.length - 1;
+  }
+  play() {
+    if (this.i >= this.v.steps.length - 1) this.go(0, true);
+    const b = this.root.querySelector('[data-a="play"]'); b.textContent = "⏸"; b.setAttribute("aria-label", "Пауза");
+    this.timer = setInterval(() => {
+      if (this.i >= this.v.steps.length - 1) return this.stop();
+      this.go(this.i + 1);
+    }, 1500 / this.speed);
+  }
+  stop() {
+    clearInterval(this.timer); this.timer = null;
+    const b = this.root.querySelector('[data-a="play"]'); if (b) { b.textContent = "▶"; b.setAttribute("aria-label", "Пуск"); }
+  }
+  toggle() { this.timer ? this.stop() : this.play(); }
+}
+
+/* ---------- panels ---------- */
+function treeHtml([name, kids], depth = 0) {
+  const NB = { BaseException: "корінь усіх винятків", Exception: "ловіть це або нижче", KeyboardInterrupt: "Ctrl+C", SystemExit: "sys.exit()", LookupError: "спільний предок IndexError і KeyError", OSError: "файли, мережа, ОС", StopIteration: "сигнал кінця для for" };
+  const cls = depth < 1 ? "base" : name === "Exception" ? "ex" : depth === 1 ? "base" : "";
+  return `<li><span class="${cls}">${name}</span>${NB[name] ? `<span class="nb">${NB[name]}</span>` : ""}${kids.length ? `<ul>${kids.map(k => treeHtml(k, depth + 1)).join("")}</ul>` : ""}</li>`;
+}
+
+const TABS = DATA.order, tablist = $("#tablist"), panels = $("#panels"), vizzes = {};
+$("#ver").textContent = `CPython ${DATA.version}`;
+$("#ver2").textContent = DATA.version;
+
+function buildPanel(key) {
+  const tab = DATA.tabs[key];
+  const p = document.createElement("div");
+  p.className = "panel"; p.id = "panel-" + key; p.setAttribute("role", "tabpanel"); p.setAttribute("aria-labelledby", "tab-" + key); p.hidden = true;
+  p.innerHTML = `
+    <div class="p-head">
+      <div class="p-name">${esc(tab.title)}</div>
+      <div><p class="p-tag">${md(tab.tagline)}</p>
+        <div class="chips">${tab.chips.map(l => `<span class="chip">${esc(l)}</span>`).join("")}</div>
+        <div class="flags">${Object.entries(tab.flags).map(([k, v]) => `<span class="flag"><b>${esc(k)}</b><span class="no">${esc(v)}</span></span>`).join("")}</div></div>
+    </div>
+    <section class="s"><div class="s-h"><h2>Як це виконує інтерпретатор</h2><span class="sub">покроково · стрілка зліва показує, куди стрибає виконання</span></div>
+      <div class="viz" data-viz></div></section>
+    <section class="s"><div class="s-h"><h2>Синтаксис</h2></div><pre class="syntax">${hl(tab.syntax)}</pre></section>
+    ${tab.tree ? `<section class="s"><div class="s-h"><h2>Ієрархія винятків</h2><span class="sub">except Батько перехоплює всіх нащадків</span></div>
+      <div class="tree-wrap"><ul class="tree">${treeHtml(tab.tree)}</ul>
+      <div class="props" style="grid-template-columns:1fr;align-content:start">
+        <div class="prop"><h3>except LookupError</h3><p>Перехопить і <code>IndexError</code>, і <code>KeyError</code>, бо обидва його нащадки.</p></div>
+        <div class="prop"><h3>except Exception</h3><p>Перехопить майже все, крім <code>KeyboardInterrupt</code>, <code>SystemExit</code> і <code>GeneratorExit</code>, які навмисно лежать поза Exception.</p></div>
+        <div class="prop"><h3>Власні винятки</h3><p>Наслідуйте <code>Exception</code> (або доречний підклас, наприклад <code>ValueError</code>), а не <code>BaseException</code>.</p></div>
+      </div></div></section>` : ""}
+    <section class="s"><div class="s-h"><h2>Ключові правила</h2></div>
+      <div class="props">${tab.props.map(pr => `<div class="prop"><h3>${esc(pr.t)}</h3><p>${md(pr.d)}</p></div>`).join("")}</div></section>
+    <section class="s"><div class="s-h"><h2>Приклади та підводні камені</h2><span class="sub">реальні результати з Python ${DATA.version}</span></div>
+      <div class="ops">${tab.ops.map(cell).join("")}</div></section>`;
+  return p;
+}
+
+TABS.forEach(key => {
+  const b = document.createElement("button");
+  b.className = "tab"; b.id = "tab-" + key; b.setAttribute("role", "tab"); b.setAttribute("aria-controls", "panel-" + key); b.tabIndex = -1;
+  b.textContent = DATA.tabs[key].label;
+  b.addEventListener("click", () => select(key, true));
+  tablist.appendChild(b);
+  panels.appendChild(buildPanel(key));
+});
+tablist.addEventListener("keydown", e => {
+  const i = TABS.indexOf(document.activeElement.id.replace("tab-", ""));
+  if (i < 0) return;
+  let j = null;
+  if (e.key === "ArrowRight") j = (i + 1) % TABS.length;
+  if (e.key === "ArrowLeft") j = (i - 1 + TABS.length) % TABS.length;
+  if (e.key === "Home") j = 0;
+  if (e.key === "End") j = TABS.length - 1;
+  if (j !== null) { e.preventDefault(); select(TABS[j], true); $("#tab-" + TABS[j]).focus(); }
+});
+
+const io = "IntersectionObserver" in window ? new IntersectionObserver(entries => entries.forEach(en => {
+  const v = en.target._viz;
+  if (en.isIntersecting && v && !v.autoplayed && !REDUCED) { v.autoplayed = true; v.play(); }
+  if (!en.isIntersecting && v) v.stop();
+}), { threshold: 0.45 }) : null;
+
+function select(key, user) {
+  if (!TABS.includes(key)) key = TABS[0];
+  TABS.forEach(k => {
+    const on = k === key;
+    const b = $("#tab-" + k); b.setAttribute("aria-selected", on); b.tabIndex = on ? 0 : -1;
+    const p = $("#panel-" + k); p.hidden = !on;
+    if (!on && vizzes[k]) vizzes[k].stop();
+  });
+  if (!vizzes[key]) {
+    const el = $(`#panel-${key} [data-viz]`);
+    vizzes[key] = new Viz(el, DATA.tabs[key]);
+    el._viz = vizzes[key];
+    if (io) io.observe(el);
+  }
+  if (user) {
+    try { localStorage.setItem("pyflow-tab", key); } catch (e) {}
+    try { history.replaceState(null, "", "#" + key); } catch (e) {}
+    const tabs = $(".tabs");
+    if (tabs.getBoundingClientRect().top <= 1) window.scrollTo({ top: tabs.offsetTop, behavior: "instant" });
+  }
+}
+let initial = location.hash.slice(1);
+if (!TABS.includes(initial)) { try { initial = localStorage.getItem("pyflow-tab") || ""; } catch (e) { initial = ""; } }
+select(TABS.includes(initial) ? initial : TABS[0], false);
+window.addEventListener("hashchange", () => select(location.hash.slice(1), false));
+</script>
+</body>
+</html>

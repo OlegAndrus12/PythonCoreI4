@@ -12,7 +12,8 @@ Modules are added as lectures happen; the complete previous iteration is [Python
 
 ```
 ├── module01/   Data types: built-in types, mutability, typing, operator precedence, collections, conversions
-├── module02/   Control flow: if / elif / else, the ternary operator, for loops
+├── module02/   Control flow: if / elif / else, the ternary operator, for and while loops, exceptions, first functions
+├── module03/   Dates, times and randomness: datetime, timedelta, time zones, UTC, time, calendar, random
 ```
 
 **Conventions used throughout:**
@@ -20,7 +21,7 @@ Modules are added as lectures happen; the complete previous iteration is [Python
 - Each module has an `agenda.md` with the lecture plan (in Ukrainian); slides are added as a PDF where there are any.
 - The `.html` pages are self-contained: open them straight from disk in a browser, no server or install needed.
 - Every result shown in an HTML page comes from actually running that example on CPython 3.14.3.
-- Every script runs on its own: `python module01/strings/basics.py`. Scripts in `module02/if_statements/` ask for input.
+- Every script runs on its own: `python module01/strings/basics.py`. Scripts in `module02/if_statements/` and `module02/while_loop/` ask for input.
 ---
 
 # Module 01 — Data types
@@ -68,8 +69,13 @@ runtime but never converts them silently.
 
 # Module 02 — Control flow
 
-Making a program choose and repeat: branching with `if`, looping over collections with `for`, and the
-built-ins that make loops readable. The lecture also covers `while`, the debugger and exceptions.
+Making a program choose and repeat: branching with `if`, looping with `for` and `while`, the built-ins
+that make loops readable, and handling exceptions. The lecture ends with the idea of functions.
+
+| File                                                                      | What it is                                                                                                                         |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **[python-control-flow.html](module02/python-control-flow.html)**         | Interactive cheat sheet: one tab each for `if`, `while`, `for` and `try` / `except` — syntax, key rules, a step-by-step view of how the interpreter runs it, the exception hierarchy, examples and pitfalls |
+| **[caesar_visualizer.html](module02/functions/caesar/caesar_visualizer.html)** | Caesar cipher, letter by letter: each letter becomes a number, gets shifted, and wraps around; with the full substitution table |
 
 **`if` statements** — interactive, each script asks for input:
 
@@ -77,7 +83,7 @@ built-ins that make loops readable. The lecture also covers `while`, the debugge
 | ---------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | [if_statements/01.py](module02/if_statements/01.py)        | A login check: nested `if` / `elif` / `else`                                  |
 | [if_statements/02.py](module02/if_statements/02.py)        | Comparing two numbers                                                         |
-| [if_statements/03.py](module02/if_statements/03.py)        | Combining conditions with `and` / `or`                                        |
+| [if_statements/03.py](module02/if_statements/03.py)        | Current local time in three offices with `zoneinfo`                           |
 | [if_statements/04.py](module02/if_statements/04.py)        | Membership checks with `in` / `not in`                                        |
 | [if_statements/06.py](module02/if_statements/06.py)        | Leap year — the order of the conditions matters                               |
 | [if_statements/ternary.py](module02/if_statements/ternary.py) | The ternary operator: `value_if_true if condition else value_if_false`     |
@@ -93,4 +99,45 @@ built-ins that make loops readable. The lecture also covers `while`, the debugge
 | [for_loop/zip.py](module02/for_loop/zip.py)                                       | `zip` — walking two lists in step                                      |
 | [for_loop/nested.py](module02/for_loop/nested.py)                                 | Nested loops: a weekly schedule, round-robin matchups                  |
 
+**`while` loops** — interactive, each script asks for input:
+
+| Script                                                          | What it shows                                                                         |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| [while_loop/digit_sum.py](module02/while_loop/digit_sum.py)     | Sum of the digits of a number with `% 10` and `//= 10`                                |
+| [while_loop/guess.py](module02/while_loop/guess.py)             | Guess the number: loop until the answer is right, counting attempts                  |
+| [while_loop/menu.py](module02/while_loop/menu.py)               | A game menu: `while True` with `break` to quit and `continue` on bad input            |
+| [while_loop/menu_enum.py](module02/while_loop/menu_enum.py)     | The same menu with an `Enum` and `match` / `case` instead of string comparisons      |
+
+**Functions:**
+
+| Script                                                          | What it shows                                                                                                                         |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| [functions/01_functions.py](module02/functions/01_functions.py) | A clinic check-in: BMI, default and named arguments, validating input and returning early, returning several values, combining small functions |
+| [functions/caesar/main.py](module02/functions/caesar/main.py)   | `encrypt(key, message)` — the Caesar cipher behind the visualizer                                                                    |
+
 📋 Full topic list: **[module02/agenda.md](module02/agenda.md)**
+
+---
+
+# Module 03 — Dates, times and random numbers
+
+Working with dates and times — creating, formatting, parsing, doing arithmetic, and converting between
+time zones — plus the `random` module.
+
+| File                                                              | What it is                                                                                                                                                        |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **[python-date-random.html](module03/python-date-random.html)**   | Interactive cheat sheet: tabs for `datetime`, `date`, `time`, `timedelta`, time zones (`timezone` and `zoneinfo`), UTC, the `time` module, `calendar`, `random`, all `strftime` / `strptime` codes, and ready-made recipes |
+| **[formats.md](module03/formats.md)**                             | Every `strftime` / `strptime` format code, each shown on the same reference date                                                                                 |
+
+**`random` scripts:**
+
+| Script                                              | What it shows                                                                          |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| [random/01_rd.py](module03/random/01_rd.py)         | `randint` — a coin flip                                                                |
+| [random/02_rd.py](module03/random/02_rd.py)         | Flip a coin until one side comes up four times in a row                               |
+| [random/03_rd.py](module03/random/03_rd.py)         | Bogosort: `shuffle` a list until it happens to be sorted                              |
+| [random/04_rd.py](module03/random/04_rd.py)         | `choices` — generate a random licence plate                                            |
+| [random/05_rd.py](module03/random/05_rd.py)         | `choice` vs `sample` vs `choices`: one item, unique items, items that can repeat       |
+| [random/06_rd.py](module03/random/06_rd.py)         | `random()`, `uniform()`, and `seed()` for reproducible results                         |
+
+📋 Full topic list: **[module03/agenda.md](module03/agenda.md)**

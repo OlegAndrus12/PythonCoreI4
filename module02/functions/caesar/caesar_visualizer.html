@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Caesar Cipher Visualizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Onest:wght@600;800&display=swap">
+<style>
+/* Layout: header with formulas; control bar; input/output tapes; ring (animated pointer) + step log side by side; full mapping table below. */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --ink: #141a24;
+  --muted: #5a6476;
+  --line: #dbe0e8;
+  --accent: #2354c7;
+  --accent-soft: #e6edfb;
+  --ok: #1f7a4d;
+  --ok-soft: #e1f3e9;
+  --src: #7a5300;
+  --src-soft: #fbefc9;
+  --cell: #f6f7f9;
+  --font-display: "Onest", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1218; --surface: #151b24; --ink: #e5e9f0; --muted: #98a2b4; --line: #283141;
+    --accent: #86a8ff; --accent-soft: #1b2740;
+    --ok: #6fd3a0; --ok-soft: #12322d; --src: #f4d27a; --src-soft: #3a2f12; --cell: #181d25;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1218; --surface: #151b24; --ink: #e5e9f0; --muted: #98a2b4; --line: #283141;
+  --accent: #86a8ff; --accent-soft: #1b2740;
+  --ok: #6fd3a0; --ok-soft: #12322d; --src: #f4d27a; --src-soft: #3a2f12; --cell: #181d25;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-inline: 16px; padding-block: 0 64px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; }
+code, .mono { font-family: var(--font-mono); font-size: 0.92em; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+/* header */
+.top { padding-block: 32px 18px; display: flex; flex-wrap: wrap; gap: 12px 32px; align-items: end; justify-content: space-between; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(28px, 4.4vw, 42px); line-height: 1.05; margin: 6px 0 8px; letter-spacing: -0.01em; }
+.lede { margin: 0; color: var(--muted); max-width: 62ch; }
+.formulas { display: grid; gap: 6px; font-family: var(--font-mono); font-size: 14px; }
+.formulas div { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 12px; }
+.formulas b { color: var(--accent); font-weight: 700; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 15px; margin: 0 0 10px; color: var(--muted); letter-spacing: 0.02em; }
+
+/* controls */
+.controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: end; }
+.field { display: grid; gap: 4px; }
+.field label, .field .lbl { font-size: 12px; color: var(--muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.05em; }
+input[type=text], input[type=number] {
+  font: 500 16px var(--font-mono); color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 7px 10px;
+}
+#word { width: min(260px, 100%); text-transform: uppercase; }
+#key { width: 72px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.seg button { border: 0; border-radius: 0; background: var(--bg); color: var(--muted); }
+.seg button[aria-pressed=true] { background: var(--accent); color: var(--surface); }
+button {
+  font: 600 14px var(--font-body); color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 14px; cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: var(--surface); border-color: var(--accent); min-width: 96px; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.speed { display: flex; align-items: center; gap: 8px; }
+.speed output { font-family: var(--font-mono); font-size: 13px; width: 3.5ch; }
+.hint { margin-top: 10px; font-size: 13px; color: var(--muted); }
+kbd { font-family: var(--font-mono); font-size: 12px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--bg); }
+
+/* tapes */
+.tapes { margin-top: 16px; display: grid; gap: 10px; }
+.tape-row { display: grid; grid-template-columns: 74px 1fr; align-items: center; gap: 10px; }
+.tape-row .lbl { font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-transform: uppercase; }
+.tape { display: flex; flex-wrap: wrap; gap: 4px; min-height: 40px; }
+.tape span {
+  width: 34px; height: 40px; display: grid; place-items: center;
+  font: 700 18px var(--font-mono); border: 1px solid var(--line); border-radius: var(--radius); background: var(--cell);
+  transition: background .2s, border-color .2s, transform .2s;
+}
+.tape span.space { border-style: dashed; color: var(--muted); }
+.tape span.done { color: var(--muted); }
+.tape span.cur { background: var(--src-soft); border-color: var(--src); color: var(--src); transform: translateY(-3px); }
+.tape span.pending { color: transparent; border-style: dashed; }
+.tape span.new { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+
+/* stage */
+.stage { margin-top: 16px; display: grid; grid-template-columns: minmax(0, 460px) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 860px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+.ring-card { display: grid; place-items: center; }
+#ring { width: 100%; max-width: 440px; height: auto; display: block; }
+#ring .cell circle { fill: var(--cell); stroke: var(--line); stroke-width: 1.2; transition: fill .15s, stroke .15s; }
+#ring .cell text.l { font: 700 15px var(--font-mono); fill: var(--ink); text-anchor: middle; dominant-baseline: central; }
+#ring .cell text.i { font: 500 10px var(--font-mono); fill: var(--muted); text-anchor: middle; dominant-baseline: central; }
+#ring .cell.under circle { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+#ring .cell.src circle { fill: var(--src-soft); stroke: var(--src); stroke-width: 2; }
+#ring .cell.src text.l { fill: var(--src); }
+#ring .cell.dst circle { fill: var(--ok-soft); stroke: var(--ok); stroke-width: 2.5; }
+#ring .cell.dst text.l { fill: var(--ok); }
+#ring .hub { fill: var(--surface); stroke: var(--line); }
+#ring .needle { stroke: var(--accent); stroke-width: 3; stroke-linecap: round; }
+#ring .needle-head { fill: var(--accent); }
+#ring .c-label { font: 500 11px var(--font-mono); fill: var(--muted); text-anchor: middle; text-transform: uppercase; letter-spacing: .05em; }
+#ring .c-value { font: 800 34px var(--font-display); fill: var(--ink); text-anchor: middle; dominant-baseline: central; }
+#ring .c-sub { font: 500 12px var(--font-mono); fill: var(--accent); text-anchor: middle; }
+
+/* step log */
+.now { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+.now .big { font: 800 28px var(--font-display); }
+.now .phase { font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); background: var(--accent-soft); padding: 2px 8px; border-radius: 99px; }
+ol.log { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-family: var(--font-mono); font-size: 14px; }
+ol.log li { padding: 7px 10px; border-left: 3px solid var(--line); background: var(--bg); border-radius: 0 var(--radius) var(--radius) 0; }
+ol.log li.active { border-left-color: var(--accent); }
+ol.log li.final { border-left-color: var(--ok); color: var(--ok); font-weight: 700; }
+ol.log .m { color: var(--muted); }
+.history { margin-top: 16px; }
+.history table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 13px; }
+.history th { text-align: left; font-weight: 500; color: var(--muted); border-bottom: 1px solid var(--line); padding: 4px 6px; }
+.history td { padding: 4px 6px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.history td.out { color: var(--ok); font-weight: 700; }
+.history-scroll { max-height: 230px; overflow-y: auto; }
+
+/* mapping table */
+.mapping { margin-top: 16px; }
+.map-scroll { overflow-x: auto; padding-bottom: 4px; }
+table.map { border-collapse: separate; border-spacing: 3px; font-family: var(--font-mono); }
+table.map th { font-size: 11px; color: var(--muted); font-weight: 500; text-align: right; padding-right: 8px; white-space: nowrap; }
+table.map td { width: 30px; min-width: 30px; height: 30px; text-align: center; font-size: 14px; font-weight: 700; background: var(--cell); border: 1px solid var(--line); border-radius: 4px; transition: background .2s; }
+table.map tr.idx td { background: none; border: 0; font-size: 10px; font-weight: 500; color: var(--muted); height: 16px; }
+table.map td.hl-src { background: var(--src-soft); border-color: var(--src); color: var(--src); }
+table.map td.hl-dst { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+
+@media (prefers-reduced-motion: reduce) { .tape span, #ring .cell circle { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Module 02 · Functions · Ciphers</div>
+      <h1>Caesar cipher</h1>
+      <p class="lede">Each letter becomes a number <code>x</code> (A = 0 … Z = 25). The pointer finds the letter on the alphabet ring, then steps <code>key</code> cells forward. Wherever it stops is the new letter. Going past Z wraps back to A, which is what <code>% 26</code> means.</p>
+    </div>
+    <div class="formulas">
+      <div>encrypt: <b>(x + key) % 26</b></div>
+      <div>decrypt: <b>(y − key) % 26</b></div>
+      <div>in Python: <b>alpha[(alpha.find(letter) + key) % 26]</b></div>
+    </div>
+  </header>
+
+  <section class="card">
+    <div class="controls">
+      <div class="field">
+        <label for="word">Message</label>
+        <input id="word" type="text" value="HELLO" maxlength="40" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <span class="lbl">Mode</span>
+        <div class="seg" role="group" aria-label="Mode">
+          <button id="mEnc" aria-pressed="true">Encrypt</button>
+          <button id="mDec" aria-pressed="false">Decrypt</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="key">Key (shift)</label>
+        <input id="key" type="number" min="0" max="25" value="3">
+      </div>
+      <div class="field">
+        <label for="speed">Speed</label>
+        <div class="speed"><input id="speed" type="range" min="0.25" max="4" step="0.25" value="1"><output id="speedOut">1×</output></div>
+      </div>
+      <div class="btns">
+        <button id="play" class="primary">▶ Play</button>
+        <button id="step" title="Run to the next phase">Step ⏭</button>
+        <button id="skip" title="Show the full result instantly">Skip to end</button>
+        <button id="reset">Reset</button>
+      </div>
+    </div>
+    <div class="hint"><kbd>Space</kbd> play / pause · <kbd>→</kbd> next phase · <kbd>R</kbd> reset</div>
+
+    <div class="tapes">
+      <div class="tape-row"><span class="lbl" id="inLbl">Input</span><div class="tape" id="tapeIn"></div></div>
+      <div class="tape-row"><span class="lbl" id="outLbl">Output</span><div class="tape" id="tapeOut"></div></div>
+    </div>
+  </section>
+
+  <div class="stage">
+    <section class="card ring-card">
+      <svg id="ring" viewBox="0 0 420 420" role="img" aria-label="Alphabet ring with a moving pointer"></svg>
+    </section>
+
+    <section class="card">
+      <h2>What's happening</h2>
+      <div class="now"><span class="big" id="nowLetter">—</span><span class="phase" id="phase">ready</span></div>
+      <ol class="log" id="log"><li class="m">Press Play to start.</li></ol>
+
+      <div class="history">
+        <h2>Letters done</h2>
+        <div class="history-scroll">
+          <table>
+            <thead><tr><th>in</th><th>index</th><th>calculation</th><th>out</th></tr></thead>
+            <tbody id="hist"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="card mapping">
+    <h2 id="mapTitle">Full substitution table</h2>
+    <div class="map-scroll"><table class="map" id="map"></table></div>
+  </section>
+</div>
+
+<script>
+const ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const N = 26;
+const $ = id => document.getElementById(id);
+const mod = (n, m = N) => ((n % m) + m) % m;
+
+// ---------- inputs ----------
+let mode = "enc";
+const params = () => ({
+  key: mod(Math.trunc(+$("key").value || 0)),
+  word: $("word").value.toUpperCase(),
+});
+let speedVal = 1;
+
+// ---------- ring ----------
+const C = 210, R_CELL = 160, R_IDX = 192, R_NEEDLE = 132;
+const svgNS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs, parent) => {
+  const e = document.createElementNS(svgNS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+};
+const ring = $("ring");
+const cells = [];
+for (let i = 0; i < N; i++) {
+  const ang = (i * 360 / N - 90) * Math.PI / 180;
+  const g = el("g", { class: "cell" }, ring);
+  el("circle", { cx: C + R_CELL * Math.cos(ang), cy: C + R_CELL * Math.sin(ang), r: 16 }, g);
+  el("text", { class: "l", x: C + R_CELL * Math.cos(ang), y: C + R_CELL * Math.sin(ang) }, g).textContent = ALPHA[i];
+  el("text", { class: "i", x: C + R_IDX * Math.cos(ang), y: C + R_IDX * Math.sin(ang) }, g).textContent = i;
+  cells.push(g);
+}
+const needle = el("g", {}, ring);
+el("line", { class: "needle", x1: C, y1: C, x2: C, y2: C - R_NEEDLE + 10 }, needle);
+el("path", { class: "needle-head", d: `M${C} ${C - R_NEEDLE - 4} l-8 16 h16 z` }, needle);
+el("circle", { class: "hub", cx: C, cy: C, r: 74 }, ring);
+const cLabel = el("text", { class: "c-label", x: C, y: C - 34 }, ring);
+const cValue = el("text", { class: "c-value", x: C, y: C + 2 }, ring);
+const cSub = el("text", { class: "c-sub", x: C, y: C + 38 }, ring);
+
+let pos = 0;           // continuous pointer position, in cells (can go past 25 or below 0 → wraps)
+function setPos(p) {
+  pos = p;
+  needle.setAttribute("transform", `rotate(${p * 360 / N} ${C} ${C})`);
+  const under = mod(Math.round(p));
+  cells.forEach((c, i) => c.classList.toggle("under", i === under));
+}
+function center(label, value, sub) {
+  cLabel.textContent = label;
+  cValue.textContent = value;
+  cSub.textContent = sub || "";
+}
+function mark(cls, i) {
+  cells.forEach((c, k) => c.classList.toggle(cls, k === i));
+}
+
+// ---------- animation engine (pause / step / cancel) ----------
+class Cancelled extends Error {}
+let runId = 0, paused = true, stepping = false, running = false, finished = false, instant = false;
+let wakers = [];
+const wake = () => { const w = wakers; wakers = []; w.forEach(f => f()); };
+const guard = id => { if (id !== runId) throw new Cancelled(); };
+async function hold(id) {
+  while (paused) { await new Promise(r => wakers.push(r)); guard(id); }
+  guard(id);
+}
+const frame = () => new Promise(r => requestAnimationFrame(r));
+const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+async function tween(id, from, to, ms) {
+  if (instant) { setPos(to); return; }
+  let t = 0, last = null;
+  while (t < 1) {
+    if (paused) { await hold(id); last = null; }
+    const now = await frame(); guard(id);
+    if (last !== null) t = Math.min(1, t + (now - last) / (ms / speedVal));
+    last = now;
+    setPos(from + (to - from) * ease(t));
+  }
+}
+async function wait(id, ms) {
+  if (instant) return;
+  let t = 0, last = null;
+  while (t < ms) {
+    if (paused) { await hold(id); last = null; }
+    const now = await frame(); guard(id);
+    if (last !== null) t += (now - last) * speedVal;
+    last = now;
+  }
+}
+async function checkpoint(id) {
+  guard(id);
+  if (stepping && !instant) { paused = true; syncButtons(); await hold(id); }
+}
+
+// ---------- log ----------
+const log = $("log");
+function phase(name) { $("phase").textContent = name; }
+function logClear() { log.innerHTML = ""; }
+function logAdd(html, cls) {
+  log.querySelectorAll("li.active").forEach(li => li.classList.remove("active"));
+  const li = document.createElement("li");
+  li.innerHTML = html;
+  li.className = cls || "active";
+  log.appendChild(li);
+  return li;
+}
+
+// ---------- tapes & mapping ----------
+function buildTapes() {
+  const { word } = params();
+  $("tapeIn").innerHTML = ""; $("tapeOut").innerHTML = "";
+  for (const ch of word) {
+    const s = document.createElement("span");
+    s.textContent = ch === " " ? "␣" : ch;
+    if (!ALPHA.includes(ch)) s.classList.add("space");
+    $("tapeIn").appendChild(s);
+    const o = document.createElement("span");
+    o.className = "pending"; o.textContent = "·";
+    $("tapeOut").appendChild(o);
+  }
+  $("inLbl").textContent = mode === "enc" ? "Plain" : "Cipher";
+  $("outLbl").textContent = mode === "enc" ? "Cipher" : "Plain";
+}
+function buildMap() {
+  const { key } = params();
+  const row = (label, cls, fn) => `<tr class="${cls}"><th>${label}</th>${[...ALPHA].map((_, x) => fn(x)).join("")}</tr>`;
+  $("map").innerHTML =
+    row("x", "idx", x => `<td>${x}</td>`) +
+    row("plain", "p", x => `<td data-x="${x}">${ALPHA[x]}</td>`) +
+    row(`(x+${key}) % 26`, "idx", x => `<td>${mod(x + key)}</td>`) +
+    row("cipher", "c", x => `<td data-x="${x}">${ALPHA[mod(x + key)]}</td>`);
+  $("mapTitle").textContent = `Full substitution table for key = ${key}`;
+}
+function mapHighlight(x) {
+  $("map").querySelectorAll("td.hl-src, td.hl-dst").forEach(td => td.classList.remove("hl-src", "hl-dst"));
+  if (x == null) return;
+  const p = $("map").querySelector(`tr.p td[data-x="${x}"]`);
+  const c = $("map").querySelector(`tr.c td[data-x="${x}"]`);
+  p.classList.add(mode === "enc" ? "hl-src" : "hl-dst");
+  c.classList.add(mode === "enc" ? "hl-dst" : "hl-src");
+  const box = $("map").parentElement, td = mode === "enc" ? p : c;
+  box.scrollLeft = td.offsetLeft - box.clientWidth / 2;
+}
+
+// ---------- the algorithm, animated ----------
+async function shiftLetter(id, ch, idx) {
+  const { key } = params();
+  const enc = mode === "enc";
+  const src = ALPHA.indexOf(ch);
+  const sign = enc ? 1 : -1;
+  const op = enc ? "+" : "−";
+
+  phase("1 · find letter");
+  logAdd(`Find <b>${ch}</b> on the ring, starting from A`);
+  center("index", 0);
+  await tween(id, 0, src, 250 + src * 70);
+  mark("src", src);
+  center(enc ? "x" : "y", src, `'${ch}' → ${src}`);
+  logAdd(`alpha.find('${ch}') = <b>${src}</b>`);
+  await checkpoint(id);
+
+  phase(`2 · step ${enc ? "forward" : "back"} ${key}`);
+  let v = src;
+  const li = logAdd(key === 0 ? `key = 0 → the pointer stays put` : `Step ${enc ? "forward" : "backward"} ${key} cell${key === 1 ? "" : "s"}`);
+  for (let k = 1; k <= key; k++) {
+    await tween(id, v, v + sign, 220);
+    v += sign;
+    center(`${src} ${op} ${k}`, v, `% 26 → ${mod(v)}`);
+    li.innerHTML = `Step ${k} of ${key} → ${v}${v !== mod(v) ? ` <span class="m">(wrapped → ${mod(v)})</span>` : ""}`;
+  }
+  const res = mod(src + sign * key);
+  logAdd(`(${src} ${op} ${key}) % 26 = ${src + sign * key} % 26 = <b>${res}</b>`);
+  await checkpoint(id);
+
+  const out = ALPHA[res];
+  phase("3 · match");
+  mark("dst", res);
+  center("result", out, `index ${res}`);
+  logAdd(`${ch} → <b>${out}</b>`, "final");
+  mapHighlight(enc ? src : res);
+  const o = $("tapeOut").children[idx];
+  o.textContent = out; o.className = "new";
+  addHistory(ch, src, `(${src} ${op} ${key}) % 26 = ${res}`, out);
+  await wait(id, 650);
+  await checkpoint(id);
+  o.className = "";
+  // rewind for the next letter
+  setPos(res);
+  await tween(id, res, res > N / 2 ? N : 0, 260);
+  setPos(0);
+}
+
+function addHistory(ch, i, calc, out) {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `<td>${ch}</td><td>${i}</td><td>${calc}</td><td class="out">${out}</td>`;
+  $("hist").appendChild(tr);
+  const box = tr.closest(".history-scroll");
+  box.scrollTop = box.scrollHeight;
+}
+
+async function run() {
+  const id = ++runId;
+  running = true; finished = false;
+  const { word } = params();
+  const ins = $("tapeIn").children;
+  try {
+    for (let i = 0; i < word.length; i++) {
+      [...ins].forEach((s, k) => { s.classList.toggle("cur", k === i); s.classList.toggle("done", k < i); });
+      const ch = word[i];
+      $("nowLetter").textContent = ch === " " ? "␣" : ch;
+      logClear();
+      mark("src", -1); mark("dst", -1); mapHighlight(null);
+      if (!ALPHA.includes(ch)) {
+        phase("skip");
+        logAdd(`'${ch}' is not in alpha → copied as is (the else branch)`, "final");
+        const o = $("tapeOut").children[i];
+        o.textContent = ch === " " ? "␣" : ch; o.className = "space";
+        addHistory(ch === " " ? "␣" : ch, "—", "not in alpha", ch === " " ? "␣" : ch);
+        await wait(id, 400);
+        await checkpoint(id);
+        continue;
+      }
+      await shiftLetter(id, ch, i);
+    }
+    [...ins].forEach(s => { s.classList.remove("cur"); s.classList.add("done"); });
+    const result = [...$("tapeOut").children].map(s => s.textContent === "␣" ? " " : s.textContent).join("");
+    phase("done");
+    $("nowLetter").textContent = result || "—";
+    logClear();
+    logAdd(`${mode === "enc" ? "Ciphertext" : "Plaintext"}: <b>${result}</b>`, "final");
+    center("done", "✓");
+    finished = true;
+  } catch (e) {
+    if (!(e instanceof Cancelled)) throw e;
+    return;
+  }
+  running = false; paused = true; stepping = false; instant = false;
+  syncButtons();
+}
+
+// ---------- controls ----------
+function syncButtons() {
+  $("play").textContent = (!paused && running) ? "⏸ Pause" : (finished ? "↻ Replay" : "▶ Play");
+}
+function reset() {
+  runId++; wake();
+  running = false; paused = true; stepping = false; instant = false; finished = false;
+  buildTapes(); buildMap();
+  $("hist").innerHTML = "";
+  setPos(0); mark("src", -1); mark("dst", -1);
+  center("key = " + params().key, "A", "pointer at 0");
+  $("nowLetter").textContent = "—"; phase("ready");
+  logClear(); logAdd("Press Play to start, or Step to go one phase at a time.", "m");
+  syncButtons();
+}
+function startIfNeeded() {
+  if (finished) reset();
+  if (!running) run();
+}
+function play() {
+  if (running && !paused) { paused = true; syncButtons(); return; }
+  stepping = false; paused = false;
+  startIfNeeded(); wake(); syncButtons();
+}
+function step() {
+  stepping = true; paused = false;
+  startIfNeeded(); wake(); syncButtons();
+}
+function skip() {
+  if (finished) reset();
+  instant = true; stepping = false; paused = false;
+  startIfNeeded(); wake(); syncButtons();
+}
+function setMode(m) {
+  mode = m;
+  $("mEnc").setAttribute("aria-pressed", m === "enc");
+  $("mDec").setAttribute("aria-pressed", m === "dec");
+}
+
+$("play").onclick = play;
+$("step").onclick = step;
+$("skip").onclick = skip;
+$("reset").onclick = reset;
+$("mEnc").onclick = () => { setMode("enc"); reset(); };
+$("mDec").onclick = () => { setMode("dec"); reset(); };
+$("word").addEventListener("input", reset);
+$("key").addEventListener("input", reset);
+$("speed").addEventListener("input", e => { speedVal = +e.target.value; $("speedOut").textContent = speedVal + "×"; });
+document.addEventListener("keydown", e => {
+  if (e.target.matches("input, textarea")) return;
+  if (e.key === " ") { e.preventDefault(); play(); }
+  else if (e.key === "ArrowRight") { e.preventDefault(); step(); }
+  else if (e.key === "r" || e.key === "R") reset();
+});
+
+reset();
+</script>
+</body>
+</html>

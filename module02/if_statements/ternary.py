@@ -1,6 +1,13 @@
 # ternary operator: <value_if_true> if <condition> else <value_if_false>
+# condition ? <a> : <b>
 
 age = int(input("Enter your age: "))
+
+status = "minor"
+if age >= 18:
+    status = "adult"
+
+
 status = "adult" if age >= 18 else "minor"
 print(status)
 

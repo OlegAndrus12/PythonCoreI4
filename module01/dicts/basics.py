@@ -6,6 +6,7 @@ user = {
     "city": "Kyiv",
 }
 
+
 print(user["name"])           # Alice
 print(user.get("phone"))      # None — key doesn't exist, no crash
 print(user.get("phone", "n/a"))  # n/a — safe default
