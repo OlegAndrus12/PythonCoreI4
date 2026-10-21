@@ -83,7 +83,7 @@ that make loops readable, and handling exceptions. The lecture ends with the ide
 | ---------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | [if_statements/01.py](module02/if_statements/01.py)        | A login check: nested `if` / `elif` / `else`                                  |
 | [if_statements/02.py](module02/if_statements/02.py)        | Comparing two numbers                                                         |
-| [if_statements/03.py](module02/if_statements/03.py)        | Current local time in three offices with `zoneinfo`                           |
+| [if_statements/03.py](module02/if_statements/03.py)        | Combining conditions with `and` / `or`                                        |
 | [if_statements/04.py](module02/if_statements/04.py)        | Membership checks with `in` / `not in`                                        |
 | [if_statements/06.py](module02/if_statements/06.py)        | Leap year — the order of the conditions matters                               |
 | [if_statements/ternary.py](module02/if_statements/ternary.py) | The ternary operator: `value_if_true if condition else value_if_false`     |
