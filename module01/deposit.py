@@ -1,21 +1,26 @@
+# Compound interest formula:
+# Total = A * (1 + r) ^ t
+# where:
+# A = initial amount
+# r = annual rate (decimal, e.g. 0.15 for 15%)
+# t = time in years
 
-config_lines = [
-    "# database settings",
-    "DB_HOST=localhost",
-    "DB_PORT=5432",
-    "# app settings",
-    "DEBUG=True",
-    "PORT=8000",
-]
+import math
 
-configs = {}
+try:
+    amount = float(input("Enter investment amount (UAH) >>> "))
+    rate = float(input("Enter annual rate (%) >>> "))
+    years = float(input("Enter term (years) >>> "))
 
-print("Parsed configs")
-for line in config_lines:
-    if line.startswith("#"):
-        continue
+    r = rate / 100
 
-    name, value = line.split("=")
-    configs[name] = value
+    total = math.floor(amount * math.pow(1 + r, years))
+    income = total - amount
 
-print(configs)
+    print("Income =", income)
+    print("Total =", total)
+
+except ValueError:
+    print("Error: please enter valid numbers")
+except Exception as e:
+    print("Unexpected error:", e)

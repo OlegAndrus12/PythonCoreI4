@@ -1,5 +1,7 @@
 # Python Core
 
+**English** · [Українська](README.uk.md)
+
 [![Python](https://img.shields.io/badge/Python-3.14-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/downloads/)
 
 Lecture materials for the Python Core course. Each module is one lecture: slides, a lecture plan, and
@@ -22,6 +24,7 @@ Modules are added as lectures happen; the complete previous iteration is [Python
 - The `.html` pages are self-contained: open them straight from disk in a browser, no server or install needed.
 - Every result shown in an HTML page comes from actually running that example on CPython 3.14.3.
 - Every script runs on its own: `python module01/strings/basics.py`. Scripts in `module02/if_statements/` and `module02/while_loop/` ask for input.
+
 ---
 
 # Module 01 — Data types
