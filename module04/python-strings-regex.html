@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Шпаргалка: рядки та regex</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Onest:wght@600;800&display=swap">
+<style>
+/* Layout: tabbed cheatsheet. Sticky tab rail of types; each panel = header, properties, methods, REPL cells. */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --ink: #141a24;
+  --muted: #5a6476;
+  --line: #dbe0e8;
+  --accent: #2354c7;
+  --accent-soft: #e6edfb;
+  --err: #b4322b;
+  --err-soft: #fbeceb;
+  --ok: #1f7a4d;
+  /* memory roles */
+  --m-gc: #eceef2;   --m-gc-ink: #6b7384;
+  --m-head: #dfe7f7; --m-head-ink: #23407f;
+  --m-meta: #ece3f7; --m-meta-ink: #5a3290;
+  --m-ptr: #d9f0ec;  --m-ptr-ink: #105e52;
+  --m-data: #fbefc9; --m-data-ink: #7a5300;
+  --m-empty: #f6f7f9; --m-empty-ink: #9aa2b1;
+  --font-display: "Onest", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1218; --surface: #151b24; --ink: #e5e9f0; --muted: #98a2b4; --line: #283141;
+    --accent: #86a8ff; --accent-soft: #1b2740; --err: #ff8a80; --err-soft: #3a1d1d; --ok: #6fd3a0;
+    --m-gc: #1d222b; --m-gc-ink: #8d96a7;
+    --m-head: #1b2a48; --m-head-ink: #a9c1f7;
+    --m-meta: #2b2140; --m-meta-ink: #cdb4f5;
+    --m-ptr: #12322d; --m-ptr-ink: #8fe0d1;
+    --m-data: #3a2f12; --m-data-ink: #f4d27a;
+    --m-empty: #181d25; --m-empty-ink: #5f6878;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1218; --surface: #151b24; --ink: #e5e9f0; --muted: #98a2b4; --line: #283141;
+  --accent: #86a8ff; --accent-soft: #1b2740; --err: #ff8a80; --err-soft: #3a1d1d; --ok: #6fd3a0;
+  --m-gc: #1d222b; --m-gc-ink: #8d96a7;
+  --m-head: #1b2a48; --m-head-ink: #a9c1f7;
+  --m-meta: #2b2140; --m-meta-ink: #cdb4f5;
+  --m-ptr: #12322d; --m-ptr-ink: #8fe0d1;
+  --m-data: #3a2f12; --m-data-ink: #f4d27a;
+  --m-empty: #181d25; --m-empty-ink: #5f6878;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-inline: 16px; padding-block: 0 64px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; }
+code, pre, .mono { font-family: var(--font-mono); font-size: 0.9em; font-variant-ligatures: none; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+/* header */
+.top { padding-block: 32px 18px; display: flex; flex-wrap: wrap; gap: 12px 32px; align-items: end; justify-content: space-between; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(28px, 4.4vw, 42px); line-height: 1.05; margin: 6px 0 8px; letter-spacing: -0.01em; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); max-width: 62ch; }
+.key-legend { display: flex; gap: 16px; font-size: 13px; color: var(--muted); }
+.key-legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+/* tabs */
+.tabs {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg); border-bottom: 1px solid var(--line);
+  margin-inline: -16px; padding-inline: 16px;
+}
+.tablist { max-width: 1180px; margin: 0 auto; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.tablist::-webkit-scrollbar { display: none; }
+.tab {
+  appearance: none; border: 0; background: none; cursor: pointer; color: var(--muted);
+  font-family: var(--font-mono); font-size: 15px; font-weight: 500;
+  padding: 12px 14px 11px; border-bottom: 3px solid transparent; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 700; }
+.dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid currentColor; flex: none; }
+.dot.mut { background: currentColor; }
+.tab .dot { color: var(--accent); }
+
+/* panel header */
+.panel { padding-block: 28px 0; }
+.p-head { display: grid; grid-template-columns: auto 1fr; gap: 6px 28px; align-items: start; }
+.p-name { font-family: var(--font-mono); font-weight: 700; font-size: clamp(44px, 8vw, 76px); line-height: 0.95; letter-spacing: -0.03em; color: var(--accent); }
+.p-tag { font-size: 18px; margin: 4px 0 12px; max-width: 60ch; text-wrap: pretty; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-family: var(--font-mono); font-size: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; }
+.flags { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 14px; font-size: 13px; }
+.flag { display: inline-flex; gap: 6px; align-items: baseline; }
+.flag b { font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; font-size: 11px; color: var(--muted); }
+.flag .yes { color: var(--ok); font-weight: 600; }
+.flag .no { color: var(--muted); }
+@media (max-width: 640px) { .p-head { grid-template-columns: 1fr; } }
+
+/* sections */
+section.s { margin-top: 40px; }
+.s-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 18px; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 22px; margin: 0; letter-spacing: -0.005em; }
+.s-h .sub { color: var(--muted); font-size: 13px; }
+.s-h .grow { flex: 1; }
+
+/* properties */
+.props { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 18px 36px; }
+.prop { min-width: 0; padding-top: 10px; border-top: 1px solid var(--line); }
+.prop h3 { font-size: 15px; font-weight: 600; margin: 0 0 3px; }
+.prop p { margin: 0; color: var(--muted); font-size: 14px; }
+.prop code, .notes code, .m-desc code { color: var(--ink); background: var(--surface); border: 1px solid var(--line); padding: 0 4px; border-radius: 3px; font-size: 0.86em; }
+
+/* methods */
+.filter { font-family: var(--font-mono); font-size: 14px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); width: min(100%, 16em); }
+.m-group { font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; color: var(--muted); margin: 22px 0 6px; }
+.m-group:first-child { margin-top: 0; }
+.m-row { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr) minmax(0, 1.25fr); gap: 6px 24px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.m-name { font-family: var(--font-mono); font-weight: 700; font-size: 15px; }
+.m-sig { font-family: var(--font-mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; margin-top: 2px; }
+.m-desc { font-size: 14px; }
+.m-empty { color: var(--muted); padding: 12px 0; }
+@media (max-width: 900px) { .m-row { grid-template-columns: 1fr; } }
+.m-note { font-size: 14px; color: var(--muted); margin: -6px 0 12px; }
+
+/* code cells */
+.cell { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.cell pre { margin: 0; padding: 8px 12px; overflow-x: auto; font-size: 13px; line-height: 1.5; }
+.cell .res { border-top: 1px dashed var(--line); padding: 6px 12px; font-family: var(--font-mono); font-size: 13px; overflow-x: auto; white-space: pre; display: flex; gap: 8px; }
+.cell .res::before { content: "→"; color: var(--muted); flex: none; }
+.cell .res.err { background: var(--err-soft); color: var(--err); }
+.cell .res.err::before { content: "✕"; }
+.cell .stdout { padding: 4px 12px 0; font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); white-space: pre; }
+.cell .stdout::before { content: "виводить: "; font-family: var(--font-body); }
+.cell .note { padding: 0 12px 8px; font-size: 12.5px; color: var(--muted); }
+.ops { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 12px; }
+.ops .cell .note { padding-top: 6px; }
+.tk-k { color: var(--m-meta-ink); font-weight: 500; }
+.tk-s { color: var(--ok); }
+.tk-n { color: var(--m-data-ink); }
+.tk-b { color: var(--accent); }
+.tk-c { color: var(--muted); font-style: italic; }
+
+/* truth table + compare */
+.tbl-scroll { overflow-x: auto; }
+table.t { border-collapse: collapse; font-size: 14px; width: 100%; }
+table.t th, table.t td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.t th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+table.t td.n { font-family: var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; }
+table.t td.y { color: var(--ok); font-weight: 600; }
+table.t td.x { color: var(--muted); }
+table.t td code { font-weight: 700; }
+table.t tbody tr:hover { background: var(--surface); }
+.truth td { font-family: var(--font-mono); text-align: center; }
+.truth th { text-align: center; }
+
+footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+footer p { margin: 0 0 4px; max-width: 80ch; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .panel { animation: rise 0.22s ease-out; }
+  @keyframes rise { from { transform: translateY(4px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+}
+/* concept tabs: mutability, typing, precedence, collections */
+.tab.concept { font-family: var(--font-body); }
+.tab.sep { margin-left: auto; }
+table.t th .mono { text-transform: none; letter-spacing: 0; }
+.callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 10px 14px; border-radius: 0 var(--radius) var(--radius) 0; font-size: 14px; max-width: 76ch; margin: 0; }
+.callout code, .fig .cap code, .mk-n code, .fq code, td.wrap code { background: var(--surface); border: 1px solid var(--line); padding: 0 4px; border-radius: 3px; font-size: 0.86em; }
+.fine { color: var(--muted); font-size: 13px; max-width: 80ch; margin: 12px 0 0; }
+.fine p { margin: 2px 0; }
+
+.figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 16px; }
+.fig { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.fig h3 { font-size: 14px; font-weight: 600; margin: 0 0 10px; }
+.fig svg { display: block; width: 100%; height: auto; }
+.fig .cap { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+.fig svg text { font-family: var(--font-mono); font-size: 13px; fill: var(--ink); }
+.fig svg .sv-h { font-family: var(--font-body); font-size: 12px; fill: var(--muted); }
+.fig svg .sv-sub { font-size: 11px; fill: var(--muted); }
+.n-name { fill: var(--m-head); stroke: var(--m-head-ink); }
+.t-name { fill: var(--m-head-ink) !important; font-weight: 700; }
+.n-obj { fill: var(--m-data); stroke: var(--m-data-ink); }
+.n-new { fill: var(--m-ptr); stroke: var(--m-ptr-ink); }
+.n-lit { fill: var(--surface); stroke: var(--muted); }
+.n-off { fill: var(--m-empty); stroke: var(--line); }
+.n-hit { fill: var(--m-ptr); stroke: var(--ok); stroke-width: 2; }
+.edge { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.edge.hot { stroke: var(--ok); stroke-width: 2; }
+.ah { fill: var(--muted); }
+.ah.hot { fill: var(--ok); }
+.sv-ok { fill: var(--ok) !important; font-weight: 700; }
+.divider { stroke: var(--line); stroke-dasharray: 4 4; }
+
+/* group colours (precedence) */
+.g-acc { --g: var(--m-gc); --gi: var(--m-gc-ink); }
+.g-ar { --g: var(--m-data); --gi: var(--m-data-ink); }
+.g-bit { --g: var(--m-meta); --gi: var(--m-meta-ink); }
+.g-cmp { --g: var(--m-ptr); --gi: var(--m-ptr-ink); }
+.g-log { --g: var(--m-head); --gi: var(--m-head-ink); }
+.g-oth { --g: var(--err-soft); --gi: var(--err); }
+.op-node { fill: var(--g); stroke: var(--gi); stroke-width: 1.5; }
+
+/* mutability tree */
+.tree { display: grid; justify-items: center; }
+.tree-root { font-family: var(--font-display); font-weight: 600; background: var(--ink); color: var(--bg); padding: 8px 18px; border-radius: var(--radius); }
+.tree-stem { width: 2px; height: 18px; background: var(--muted); }
+.tree-br { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; padding-top: 18px; }
+.tree-br::before { content: ""; position: absolute; top: 0; left: 25%; right: 25%; height: 18px; border: 2px solid var(--muted); border-bottom: 0; border-radius: 6px 6px 0 0; }
+.branch { min-width: 0; background: var(--surface); border: 1.5px solid var(--line); border-top: 4px solid var(--bc); border-radius: var(--radius); padding: 12px 14px; }
+.branch.mut { --bc: var(--m-data-ink); }
+.branch.imm { --bc: var(--accent); }
+.branch h3 { margin: 0; font-size: 16px; display: flex; gap: 8px; align-items: center; }
+.branch .dot { color: var(--bc); }
+.branch p { margin: 2px 0 10px; color: var(--muted); font-size: 13px; }
+.branch ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: 4px 12px; }
+.branch li { display: flex; gap: 8px; align-items: baseline; font-size: 13px; color: var(--muted); }
+.branch li code { color: var(--ink); font-weight: 700; font-size: 14px; }
+.branch li a { text-decoration: none; }
+.branch li a code { color: var(--accent); }
+
+/* yes/no marks in tables */
+table.t td.wrap { white-space: normal; min-width: 12rem; }
+td.mk .sym { font-weight: 700; font-family: var(--font-mono); }
+td.mk.y .sym { color: var(--ok); }
+td.mk.no .sym { color: var(--err); }
+td.mk.warn .sym { color: var(--m-data-ink); }
+td.mk.mid .sym { color: var(--muted); }
+.mk-n { color: var(--muted); font-size: 13px; }
+table.t th.hl, table.t td.hl { background: var(--accent-soft); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); margin-top: 10px; }
+.legend b { font-family: var(--font-mono); }
+
+/* typing quadrant */
+.quad { display: grid; grid-template-columns: minmax(64px, auto) 1fr 1fr; gap: 8px; max-width: 860px; }
+.q-ax { font-weight: 600; font-size: 14px; display: flex; flex-direction: column; justify-content: center; }
+.q-ax small { font-weight: 400; color: var(--muted); font-size: 12px; }
+.q-x { text-align: center; }
+.q-cell { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.q-cell.hot { border: 2px solid var(--accent); background: var(--accent-soft); }
+.q-t { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+.q-langs { display: flex; flex-wrap: wrap; gap: 4px; }
+.q-langs span { font-size: 13px; border: 1px solid var(--line); border-radius: 4px; padding: 0 6px; background: var(--bg); }
+.q-langs span.me { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+.q-ex { font-size: 13px; overflow-wrap: anywhere; }
+.q-ex .r { color: var(--muted); }
+.q-ex .r.no { color: var(--err); }
+.q-ex .r.warn { color: var(--m-data-ink); }
+
+/* typing timelines */
+.lanes { display: grid; gap: 14px; }
+.lane-h { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+.lane-h span { color: var(--muted); font-weight: 400; }
+.steps { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.st { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 10px; font-size: 13px; line-height: 1.3; }
+.st small { display: block; color: var(--muted); font-size: 12px; }
+.st.ok { border-color: var(--ok); }
+.st.bad { border-color: var(--err); background: var(--err-soft); color: var(--err); font-weight: 600; }
+.st.bad small { color: var(--err); font-weight: 400; }
+.st.off { opacity: 0.45; border-style: dashed; }
+.steps .arr { color: var(--muted); }
+
+/* precedence */
+.strip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 4px; font-size: 13px; }
+.strip .pc { font-family: var(--font-mono); background: var(--g); color: var(--gi); border-radius: 4px; padding: 2px 8px; font-weight: 600; white-space: nowrap; }
+.strip .gt { color: var(--muted); }
+.strip .end { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+.g-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 13px; }
+.g-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.g-legend i { width: 12px; height: 12px; border-radius: 3px; background: var(--g); border: 1px solid var(--gi); }
+table.prec td.num { font-family: var(--font-mono); font-weight: 700; text-align: center; background: var(--g); color: var(--gi); width: 2.5em; }
+table.prec td.grp { font-weight: 600; color: var(--gi); border-left: 4px solid var(--gi); vertical-align: top; }
+table.prec td.opsx { white-space: normal; min-width: 11rem; }
+table.prec td.opsx code { display: inline-block; margin: 1px 6px 1px 0; }
+.assoc { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+.as-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 4px; justify-items: start; }
+.as-card h3 { margin: 0 0 4px; font-size: 14px; }
+.as-card code { font-size: 15px; }
+.as-card .dn { color: var(--muted); font-size: 13px; }
+.as-card .grp1 { background: var(--m-data); color: var(--m-data-ink); border-radius: 3px; padding: 0 2px; }
+.paren { font-size: 14px; overflow-x: auto; white-space: nowrap; padding: 8px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); margin: 0 0 12px; }
+
+/* collections */
+table.bigo td.o { font-family: var(--font-mono); text-align: center; font-weight: 600; }
+table.bigo td.o1 { background: var(--m-ptr); color: var(--m-ptr-ink); }
+table.bigo td.on { background: var(--m-data); color: var(--m-data-ink); }
+table.bigo td.ox { color: var(--muted); }
+table.bigo td.o sup { font-weight: 400; }
+table.coll th.c, table.bigo th.c { text-align: center; font-family: var(--font-mono); text-transform: none; font-size: 14px; color: var(--ink); letter-spacing: 0; }
+table.coll td.mk, table.coll td.cc { text-align: center; }
+.flow { display: grid; grid-template-columns: minmax(0, 24rem) auto auto; gap: 0 10px; align-items: center; justify-content: start; }
+.fq { grid-column: 1; background: var(--surface); border: 1.5px solid var(--muted); border-radius: var(--radius); padding: 9px 14px; font-weight: 500; }
+.fy { color: var(--ok); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.fr { font-family: var(--font-mono); font-weight: 700; background: var(--accent); color: var(--bg); padding: 4px 12px; border-radius: var(--radius); text-decoration: none; justify-self: start; }
+.fr small { font-weight: 400; font-family: var(--font-body); opacity: 0.85; }
+.fn { grid-column: 1; justify-self: center; color: var(--muted); font-size: 13px; padding: 3px 0; }
+.fn::before { content: "↓ "; }
+.flow .fr.last { grid-column: 1; justify-self: center; }
+@media (max-width: 560px) {
+  .tree-br { grid-template-columns: 1fr; }
+  .tree-br::before { display: none; }
+  .quad { grid-template-columns: 1fr; }
+  .quad .q-ax.q-y1, .quad .q-ax.q-y2, .quad .q-blank, .quad .q-x { display: none; }
+  .flow { grid-template-columns: minmax(0, 1fr) auto auto; }
+}
+
+.imp { margin: 0 0 8px; max-width: 760px; }
+.imp-l { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin: 18px 0 6px; }
+.p-name.small { font-size: clamp(34px, 6vw, 56px); }
+.tab { font-family: var(--font-mono); }
+.tab.sep { margin-left: auto; font-family: var(--font-body); }
+.tab.concept { font-family: var(--font-body); }
+table.fmt td.c code { font-size: 15px; font-weight: 700; color: var(--accent); }
+table.fmt td.ex { font-family: var(--font-mono); white-space: pre; font-size: 13px; }
+table.fmt td.out { color: var(--ok); }
+table.fmt td.out.err { color: var(--err); }
+table.fmt td.wrap { white-space: normal; min-width: 14rem; }
+table.fmt td.p-yes { color: var(--ok); font-weight: 600; }
+table.fmt td.p-no { color: var(--muted); }
+table.fmt td.p-pair { color: var(--m-data-ink); font-weight: 600; }
+.fmt-group td { background: var(--accent-soft); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.notes { margin: 0; padding-left: 18px; max-width: 80ch; color: var(--muted); font-size: 14px; }
+.notes li { margin: 4px 0; }
+.refdate { font-size: 14px; margin: 0 0 12px; color: var(--muted); }
+.refdate b { color: var(--ink); }
+.cell .stdout::before { content: "виводить: "; }
+.cell pre { white-space: pre; }
+.cell pre, .cell .res { tab-size: 4; }
+
+/* UTC tab: world map with 15-degree zone strips, live city clocks */
+/* Code cells show their full content: wrap long lines instead of scrolling */
+.cell pre, .cell .res, .cell .stdout, table.fmt td.ex { white-space: pre-wrap; overflow-wrap: anywhere; overflow-x: visible; }
+.cell pre, .cell .res { font-size: 13.5px; }
+.m-row { grid-template-columns: minmax(0, 13rem) minmax(0, 1fr) minmax(0, 1.6fr); }
+.ops { grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); }
+table.fmt td.ex { min-width: 16rem; }
+@media (max-width: 640px) {
+  table.fmt thead { display: none; }
+  table.fmt, table.fmt tbody, table.fmt tr, table.fmt td { display: block; width: 100%; }
+  table.fmt tr { border-bottom: 1px solid var(--line); padding: 6px 0; }
+  table.fmt td { border: 0; padding: 2px 4px; white-space: normal; min-width: 0; }
+  table.fmt td.ex { min-width: 0; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow" id="ver"></div>
+      <h1>Шпаргалка: рядки та regex</h1>
+      <p class="lede">Форматування рядків (f-рядки, специфікація формату, <code>%</code> і <code>str.format()</code>), спецсимволи, методи <code>str</code> і регулярні вирази з модулем <code>re</code>: що робить кожен інструмент і короткий приклад із реальним результатом.</p>
+    </div>
+  </header>
+</div>
+<nav class="tabs" aria-label="Розділи">
+  <div class="tablist" role="tablist" id="tablist"></div>
+</nav>
+<main class="wrap" id="panels"></main>
+<div class="wrap">
+  <footer>
+    <p>Кожен результат на цій сторінці отримано справжнім запуском прикладу в CPython <span id="ver2"></span>.</p>
+  </footer>
+</div>
+<script>
+const DATA = {"version": "3.14.3", "tabs": [{"key": "fstring", "label": "f-string", "kind": "api", "title": "f-рядки", "tagline": "Рядок із префіксом `f`, у якому вирази у `{}` обчислюються й підставляються. Після двокрапки йде специфікація формату: ширина, вирівнювання, точність.", "chips": ["f\"{name}\"", "f\"{x=}\"", "f\"{price:.2f}\"", "f\"{d:%d.%m.%Y}\"", "f\"{{ }}\""], "imp": "from datetime import datetime\nname = \"Олена\"\nage = 25\nprice = 1234.5\nitems = [\"яблука\", \"груші\"]\nuser = {\"name\": \"Олена\", \"city\": \"Київ\"}\nd = datetime(2025, 4, 5, 9, 7, 3)", "props": [{"t": "Вираз, а не лише змінна", "d": "У `{}` можна писати будь-який вираз: арифметику, виклик методу, звертання до елемента, тернарний оператор."}, {"t": "Обчислюється одразу", "d": "f-рядок обчислюється в момент виконання рядка коду. Це не шаблон: якщо змінна зміниться потім, готовий рядок лишиться старим. Для шаблонів є `str.format()`."}, {"t": "Будова поля", "d": "`{вираз!перетворення:специфікація}`. Перетворення `!r`, `!s`, `!a` і специфікація необов'язкові. Специфікацію описано на вкладці «Специфікатори»."}, {"t": "Python 3.12+", "d": "Усередині `{}` можна використовувати ті самі лапки, що й зовні, зворотну скісну риску і навіть коментарі в багаторядкових виразах."}], "methods": [{"ex": "f\"Привіт, {name}! Тобі {age}.\"", "out": "'Привіт, Олена! Тобі 25.'", "err": false, "stdout": "", "note": "", "group": "Підстановка", "name": "{вираз}", "sig": "f\"...{expr}...\"", "desc": "Підставляє `str()` результату виразу."}, {"ex": "f\"Наступного року: {age + 1}\"", "out": "'Наступного року: 26'", "err": false, "stdout": "", "note": "", "group": "Підстановка", "name": "арифметика", "sig": "f\"{a + b}\"", "desc": "Будь-який вираз Python."}, {"ex": "f\"{name.upper()} купує {len(items)} товари\"", "out": "'ОЛЕНА купує 2 товари'", "err": false, "stdout": "", "note": "", "group": "Підстановка", "name": "методи й функції", "sig": "f\"{s.upper()}\"", "desc": "Виклики методів і функцій прямо в полі."}, {"ex": "f\"{items[0]}, {user['city']}\"", "out": "'яблука, Київ'", "err": false, "stdout": "", "note": "", "group": "Підстановка", "name": "елементи", "sig": "f\"{lst[0]} {d[key]}\"", "desc": "Індекс списку, ключ словника. Лапки всередині мають відрізнятися від зовнішніх (до 3.12)."}, {"ex": "f\"{'дорослий' if age >= 18 else 'дитина'}\"", "out": "'дорослий'", "err": false, "stdout": "", "note": "", "group": "Підстановка", "name": "тернарний", "sig": "f\"{a if cond else b}\"", "desc": "Умова прямо в полі."}, {"ex": "msg = (\n    f\"Ім'я: {name}\\n\"\n    f\"Вік: {age}\"\n)\nprint(msg)", "out": "", "err": false, "stdout": "Ім'я: Олена\nВік: 25\n", "note": "", "group": "Підстановка", "name": "багаторядковий", "sig": "(f\"...\" f\"...\")", "desc": "Сусідні рядки в дужках склеюються. Префікс `f` потрібен у кожному."}, {"ex": "f\"{name!r} vs {name}\"", "out": "\"'Олена' vs Олена\"", "err": false, "stdout": "", "note": "", "group": "Перетворення та налагодження", "name": "!r", "sig": "f\"{x!r}\"", "desc": "Викликає `repr()` замість `str()`: рядок отримує лапки. Зручно для налагодження."}, {"ex": "f\"{name!a}\"", "out": "\"'\\\\u041e\\\\u043b\\\\u0435\\\\u043d\\\\u0430'\"", "err": false, "stdout": "", "note": "", "group": "Перетворення та налагодження", "name": "!a", "sig": "f\"{x!a}\"", "desc": "Як `!r`, але не-ASCII символи екрануються."}, {"ex": "f\"{age=}, {name=}\"", "out": "\"age=25, name='Олена'\"", "err": false, "stdout": "", "note": "", "group": "Перетворення та налагодження", "name": "=", "sig": "f\"{expr=}\"", "desc": "Друкує текст виразу, знак `=` і значення. Для рядків використовує `repr()`."}, {"ex": "f\"{age * 2 = }\"", "out": "'age * 2 = 50'", "err": false, "stdout": "", "note": "", "group": "Перетворення та налагодження", "name": "= з пробілами", "sig": "f\"{expr = }\"", "desc": "Пробіли навколо `=` зберігаються у виводі."}, {"ex": "f\"{price=:,.1f}\"", "out": "'price=1,234.5'", "err": false, "stdout": "", "note": "", "group": "Перетворення та налагодження", "name": "= зі специфікацією", "sig": "f\"{expr=:spec}\"", "desc": "Після `=` можна додати формат."}, {"ex": "f\"{price:.2f} | {price:,.2f} | {name:>8}|\"", "out": "'1234.50 | 1,234.50 |    Олена|'", "err": false, "stdout": "", "note": "", "group": "Форматування", "name": ":специфікація", "sig": "f\"{x:spec}\"", "desc": "Формат значення: ширина, вирівнювання, точність, тип."}, {"ex": "w, p = 12, 1\nf\"[{price:{w}.{p}f}]\"", "out": "'[      1234.5]'", "err": false, "stdout": "", "note": "", "group": "Форматування", "name": "вкладені поля", "sig": "f\"{x:{w}.{p}f}\"", "desc": "Частини специфікації можна брати зі змінних."}, {"ex": "f\"{d:%d.%m.%Y %H:%M}\"", "out": "'05.04.2025 09:07'", "err": false, "stdout": "", "note": "", "group": "Форматування", "name": "дата", "sig": "f\"{d:%d.%m.%Y}\"", "desc": "Для `datetime` після `:` пишуть коди `strftime`."}, {"ex": "f\"{{name}} = {name}\"", "out": "'{name} = Олена'", "err": false, "stdout": "", "note": "", "group": "Екранування", "name": "{{ }}", "sig": "f\"{{literal}}\"", "desc": "Подвійні дужки дають одну буквальну дужку."}, {"ex": "f\"{{{age}}}\"", "out": "'{25}'", "err": false, "stdout": "", "note": "", "group": "Екранування", "name": "дужки навколо значення", "sig": "f\"{{{x}}}\"", "desc": "Три дужки: буквальна дужка + поле."}, {"ex": "f'{{\"name\": \"{name}\"}}'", "out": "'{\"name\": \"Олена\"}'", "err": false, "stdout": "", "note": "", "group": "Екранування", "name": "JSON-подібний текст", "sig": "f'{{\"k\": \"{v}\"}}'", "desc": "Кожна буквальна дужка подвоюється."}, {"ex": "f\"Місто: {user[\"city\"]}\"", "out": "'Місто: Київ'", "err": false, "stdout": "", "note": "", "group": "Python 3.12+", "name": "ті самі лапки", "sig": "f\"{d[\"key\"]}\"", "desc": "З 3.12 лапки всередині поля можуть збігатися із зовнішніми."}, {"ex": "print(f\"{\"\\n\".join(items)}\")", "out": "", "err": false, "stdout": "яблука\nгруші\n", "note": "", "group": "Python 3.12+", "name": "зворотна риска", "sig": "f\"{\"\\n\".join(lst)}\"", "desc": "З 3.12 у полі дозволено `\\`."}, {"ex": "f\"{\n    price * 0.9  # знижка 10%\n:.2f}\"", "out": "'1111.05'", "err": false, "stdout": "", "note": "", "group": "Python 3.12+", "name": "коментар у полі", "sig": "f\"{\n  expr  # ...\n:spec}\"", "desc": "Багаторядковий вираз із коментарем у потрійних або звичайних лапках."}], "ops": [{"ex": "\"Привіт, {name}\"", "out": "'Привіт, {name}'", "err": false, "stdout": "", "note": "забули префікс `f`: дужки лишаються як є"}, {"ex": "x = 1\ns = f\"x = {x}\"\nx = 2\ns", "out": "'x = 1'", "err": false, "stdout": "", "note": "значення підставлено один раз, при створенні"}, {"ex": "f\"[{'42':5}] [{42:5}]\"", "out": "'[42   ] [   42]'", "err": false, "stdout": "", "note": "рядки вирівнюються ліворуч, числа праворуч"}, {"ex": "f\"{name:d}\"", "out": "ValueError: Unknown format code 'd' for object of type 'str'", "err": true, "stdout": "", "note": "код `d` лише для цілих чисел"}, {"ex": "f\"{age:.2f}\"", "out": "'25.00'", "err": false, "stdout": "", "note": "ціле можна форматувати як дробове"}, {"ex": "f\"{name:.3}\"", "out": "'Оле'", "err": false, "stdout": "", "note": "точність для рядка обрізає його"}, {"ex": "f\"{2.675:.2f}\"", "out": "'2.67'", "err": false, "stdout": "", "note": "float зберігає 2.67499999…, тому не 2.68"}, {"ex": "f\"{0.5:.0f} {1.5:.0f} {2.5:.0f}\"", "out": "'0 2 2'", "err": false, "stdout": "", "note": "половини округлюються до парного"}, {"ex": "f\"{d:%d.%m.%Y:>15}\"", "out": "'05.04.2025:>15'", "err": false, "stdout": "", "note": "уся специфікація йде в `strftime`, ширина не працює"}, {"ex": "s = f\"{d:%d.%m.%Y}\"\nf\"[{s:>15}]\"", "out": "'[     05.04.2025]'", "err": false, "stdout": "", "note": "спочатку дату в рядок, потім вирівнювання"}]}, {"key": "old", "label": "% і format", "kind": "api", "title": "Старі способи та вирівнювання методами", "tagline": "До f-рядків були оператор `%` (стиль C) і метод `str.format()`. Вони досі трапляються в чужому коді, у `logging` і там, де шаблон треба зберегти окремо від даних.", "chips": ["\"%s, %d\" % (a, b)", "\"{}\".format(x)", "s.ljust(10)", "s.center(20, \"=\")", "s.zfill(5)"], "imp": "name = \"Олена\"\nage = 25\nprice = 49.951", "props": [{"t": "% — стиль C", "d": "`\"шаблон\" % значення`. Кілька значень передають кортежем. Коди: `%s` рядок, `%d` ціле, `%f` дробове, `%%` знак відсотка."}, {"t": "format() — шаблон окремо", "d": "Шаблон можна зберегти у змінній, файлі чи налаштуваннях і заповнити пізніше: `template.format(**data)`."}, {"t": "Методи вирівнювання", "d": "`ljust`, `rjust`, `center`, `zfill` доповнюють рядок до ширини й ніколи його не обрізають."}, {"t": "Що обрати", "d": "У новому коді — f-рядки. `format()` — коли шаблон приходить ззовні. `%` — у `logging`: `logging.info(\"User %s\", name)` форматує рядок лише тоді, коли запис справді виводиться."}], "methods": [{"ex": "\"Привіт, %s!\" % name", "out": "'Привіт, Олена!'", "err": false, "stdout": "", "note": "", "group": "Оператор %", "name": "%s", "sig": "\"%s\" % value", "desc": "Підставляє `str()` значення."}, {"ex": "\"%s має %d років\" % (name, age)", "out": "'Олена має 25 років'", "err": false, "stdout": "", "note": "", "group": "Оператор %", "name": "кілька значень", "sig": "\"%s %d\" % (a, b)", "desc": "Кілька значень — кортежем, у тому ж порядку."}, {"ex": "\"Ціна: %.2f грн\" % price", "out": "'Ціна: 49.95 грн'", "err": false, "stdout": "", "note": "", "group": "Оператор %", "name": "%.Nf", "sig": "\"%.2f\" % x", "desc": "Дробове з N знаками."}, {"ex": "\"[%5d] [%-8s]\" % (age, name)", "out": "'[   25] [Олена   ]'", "err": false, "stdout": "", "note": "", "group": "Оператор %", "name": "ширина", "sig": "\"%5d\", \"%-8s\"", "desc": "Число — ширина, `-` — вирівнювання ліворуч."}, {"ex": "\"%07.2f\" % price", "out": "'0049.95'", "err": false, "stdout": "", "note": "", "group": "Оператор %", "name": "нулі", "sig": "\"%07.2f\"", "desc": "Доповнення нулями до ширини."}, {"ex": "\"%x %o %e\" % (255, 8, price)", "out": "'ff 10 4.995100e+01'", "err": false, "stdout": "", "note": "", "group": "Оператор %", "name": "%x %o %e", "sig": "\"%x\" % n", "desc": "Шістнадцяткове, вісімкове, науковий запис."}, {"ex": "\"Знижка %d%%\" % 15", "out": "'Знижка 15%'", "err": false, "stdout": "", "note": "", "group": "Оператор %", "name": "%%", "sig": "\"%d%%\" % n", "desc": "Буквальний знак відсотка."}, {"ex": "\"%(name)s, %(age)d\" % {\"name\": name, \"age\": age}", "out": "'Олена, 25'", "err": false, "stdout": "", "note": "", "group": "Оператор %", "name": "%(key)s", "sig": "\"%(k)s\" % dict", "desc": "Значення зі словника за ключем."}, {"ex": "\"{} має {} років\".format(name, age)", "out": "'Олена має 25 років'", "err": false, "stdout": "", "note": "", "group": "str.format()", "name": "{}", "sig": "\"{} {}\".format(a, b)", "desc": "Поля за порядком аргументів."}, {"ex": "\"{0}-{1}-{0}\".format(\"ха\", \"хі\")", "out": "'ха-хі-ха'", "err": false, "stdout": "", "note": "", "group": "str.format()", "name": "{0} {1}", "sig": "\"{0}{1}{0}\".format(a, b)", "desc": "За номером: одне значення можна повторити."}, {"ex": "\"{n}: {p:.2f}\".format(n=name, p=price)", "out": "'Олена: 49.95'", "err": false, "stdout": "", "note": "", "group": "str.format()", "name": "{name}", "sig": "\"{n}\".format(n=x)", "desc": "За іменем аргументу."}, {"ex": "tpl = \"{name} ({age})\"\ndata = {\"name\": name, \"age\": age}\ntpl.format(**data)", "out": "'Олена (25)'", "err": false, "stdout": "", "note": "", "group": "str.format()", "name": "**dict", "sig": "tpl.format(**data)", "desc": "Шаблон окремо, дані зі словника."}, {"ex": "\"{0[0]} і {0[1]}\".format([\"чай\", \"кава\"])", "out": "'чай і кава'", "err": false, "stdout": "", "note": "", "group": "str.format()", "name": "{0[i]}", "sig": "\"{0[0]}\".format(lst)", "desc": "Елемент послідовності або словника всередині поля."}, {"ex": "\"{:>10.1f}|\".format(price)", "out": "'      50.0|'", "err": false, "stdout": "", "note": "", "group": "str.format()", "name": "{:spec}", "sig": "\"{:>10.1f}\".format(x)", "desc": "Та сама специфікація, що й у f-рядках."}, {"ex": "format(price, \".1f\")", "out": "'50.0'", "err": false, "stdout": "", "note": "", "group": "str.format()", "name": "format()", "sig": "format(value, spec)", "desc": "Вбудована функція: одне значення, одна специфікація."}, {"ex": "\"Кава\".ljust(10, \".\") + \"65 грн\"", "out": "'Кава......65 грн'", "err": false, "stdout": "", "note": "", "group": "Вирівнювання методами", "name": "ljust", "sig": "s.ljust(width, fill=\" \")", "desc": "Текст ліворуч, доповнення праворуч."}, {"ex": "\"[\" + \"42\".rjust(6) + \"]\"", "out": "'[    42]'", "err": false, "stdout": "", "note": "", "group": "Вирівнювання методами", "name": "rjust", "sig": "s.rjust(width, fill=\" \")", "desc": "Текст праворуч."}, {"ex": "\"Меню\".center(16, \"=\")", "out": "'======Меню======'", "err": false, "stdout": "", "note": "", "group": "Вирівнювання методами", "name": "center", "sig": "s.center(width, fill=\" \")", "desc": "По центру. Непарний залишок іде праворуч."}, {"ex": "\"7\".zfill(3), \"-42\".zfill(5)", "out": "('007', '-0042')", "err": false, "stdout": "", "note": "", "group": "Вирівнювання методами", "name": "zfill", "sig": "s.zfill(width)", "desc": "Нулі зліва; знак `+`/`-` лишається попереду."}], "ops": [{"ex": "\"%s і %s\" % name", "out": "TypeError: not enough arguments for format string", "err": true, "stdout": "", "note": "значень менше, ніж полів"}, {"ex": "\"%d\" % \"5\"", "out": "TypeError: %d format: a real number is required, not str", "err": true, "stdout": "", "note": "`%d` чекає число"}, {"ex": "t = (1, 2)\n\"Пара: %s\" % t", "out": "TypeError: not all arguments converted during string formatting", "err": true, "stdout": "", "note": "кортеж розпакувався в аргументи"}, {"ex": "t = (1, 2)\n\"Пара: %s\" % (t,)", "out": "'Пара: (1, 2)'", "err": false, "stdout": "", "note": "загорніть у кортеж з одного елемента"}, {"ex": "\"{} {}\".format(\"a\")", "out": "IndexError: Replacement index 1 out of range for positional args tuple", "err": true, "stdout": "", "note": "аргументів менше, ніж полів"}, {"ex": "\"{{}} {}\".format(1)", "out": "'{} 1'", "err": false, "stdout": "", "note": "буквальні дужки, як у f-рядках"}, {"ex": "\"Python\".ljust(3)", "out": "'Python'", "err": false, "stdout": "", "note": "методи вирівнювання не обрізають"}, {"ex": "\"%.0f %.0f\" % (0.5, 1.5)", "out": "'0 2'", "err": false, "stdout": "", "note": "округлення до парного, як і в f-рядках"}]}, {"key": "str", "label": "str", "kind": "api", "title": "Методи рядків", "tagline": "Рядок незмінний: кожен метод повертає новий рядок (або список, число, `bool`) і не змінює оригінал.", "chips": ["s.split()", "\", \".join(items)", "s.strip()", "s.replace(a, b)", "s.find(sub)", "s.isdigit()"], "imp": "s = \"  Hello, World!  \"\ncsv = \"Київ,Львів,,Одеса\"\nwords = [\"Python\", \"is\", \"fun\"]\ntitle = \"python для початківців\"", "props": [{"t": "Незмінність", "d": "`s.upper()` не змінює `s`. Результат треба присвоїти: `s = s.upper()`."}, {"t": "Ланцюжки", "d": "Кожен метод повертає рядок, тому виклики можна з'єднувати: `s.strip().lower().replace(\" \", \"-\")`."}, {"t": "Unicode", "d": "Регістр і перевірки `is*` працюють з кирилицею: `\"Їжак\".upper() == \"ЇЖАК\"`."}, {"t": "Підрядок без методів", "d": "Оператор `in` перевіряє, чи є підрядок: `\"World\" in s`. Це найчитабельніший спосіб."}], "methods": [{"ex": "s.split()", "out": "['Hello,', 'World!']", "err": false, "stdout": "", "note": "", "group": "Розбиття і з'єднання", "name": "split", "sig": "s.split(sep=None, maxsplit=-1)", "desc": "Без аргументу ділить за будь-якими пробільними символами й відкидає порожні частини."}, {"ex": "csv.split(\",\")", "out": "['Київ', 'Львів', '', 'Одеса']", "err": false, "stdout": "", "note": "", "group": "Розбиття і з'єднання", "name": "split(sep)", "sig": "s.split(\",\")", "desc": "З роздільником: порожні частини лишаються."}, {"ex": "\"a=b=c\".split(\"=\", 1)", "out": "['a', 'b=c']", "err": false, "stdout": "", "note": "", "group": "Розбиття і з'єднання", "name": "split(maxsplit)", "sig": "s.split(sep, n)", "desc": "Не більше n розрізів."}, {"ex": "\"photo.final.jpg\".rsplit(\".\", 1)", "out": "['photo.final', 'jpg']", "err": false, "stdout": "", "note": "", "group": "Розбиття і з'єднання", "name": "rsplit", "sig": "s.rsplit(sep, n)", "desc": "Як `split`, але розрізи справа."}, {"ex": "\"рядок 1\\nрядок 2\\r\\nрядок 3\".splitlines()", "out": "['рядок 1', 'рядок 2', 'рядок 3']", "err": false, "stdout": "", "note": "", "group": "Розбиття і з'єднання", "name": "splitlines", "sig": "s.splitlines()", "desc": "За кінцями рядків: `\\n`, `\\r\\n` тощо."}, {"ex": "\"key=value=x\".partition(\"=\")", "out": "('key', '=', 'value=x')", "err": false, "stdout": "", "note": "", "group": "Розбиття і з'єднання", "name": "partition", "sig": "s.partition(sep)", "desc": "Кортеж із 3 частин за першим роздільником. `rpartition` — за останнім."}, {"ex": "\" \".join(words), \"-\".join(\"abc\")", "out": "('Python is fun', 'a-b-c')", "err": false, "stdout": "", "note": "", "group": "Розбиття і з'єднання", "name": "join", "sig": "sep.join(iterable)", "desc": "Склеює рядки, вставляючи між ними `sep`. Викликається на роздільнику."}, {"ex": "s.strip()", "out": "'Hello, World!'", "err": false, "stdout": "", "note": "", "group": "Очищення країв", "name": "strip", "sig": "s.strip(chars=None)", "desc": "Прибирає пробільні символи з обох країв."}, {"ex": "s.lstrip(), s.rstrip()", "out": "('Hello, World!  ', '  Hello, World!')", "err": false, "stdout": "", "note": "", "group": "Очищення країв", "name": "lstrip / rstrip", "sig": "s.lstrip(), s.rstrip()", "desc": "Лише зліва або лише справа."}, {"ex": "\"--==Заголовок==--\".strip(\"-=\")", "out": "'Заголовок'", "err": false, "stdout": "", "note": "", "group": "Очищення країв", "name": "strip(chars)", "sig": "s.strip(\"-=\")", "desc": "Прибирає з країв будь-які символи з набору, а не підрядок."}, {"ex": "\"https://site.com\".removeprefix(\"https://\")", "out": "'site.com'", "err": false, "stdout": "", "note": "", "group": "Очищення країв", "name": "removeprefix", "sig": "s.removeprefix(prefix)", "desc": "Прибирає точний префікс, якщо він є."}, {"ex": "\"report.pdf\".removesuffix(\".pdf\")", "out": "'report'", "err": false, "stdout": "", "note": "", "group": "Очищення країв", "name": "removesuffix", "sig": "s.removesuffix(suffix)", "desc": "Прибирає точний суфікс."}, {"ex": "s.find(\"World\"), s.find(\"Python\")", "out": "(9, -1)", "err": false, "stdout": "", "note": "", "group": "Пошук", "name": "find", "sig": "s.find(sub, start=0, end=len)", "desc": "Індекс першого входження або `-1`."}, {"ex": "\"a/b/c.txt\".rfind(\"/\")", "out": "3", "err": false, "stdout": "", "note": "", "group": "Пошук", "name": "rfind", "sig": "s.rfind(sub)", "desc": "Індекс останнього входження."}, {"ex": "s.index(\"World\")", "out": "9", "err": false, "stdout": "", "note": "", "group": "Пошук", "name": "index", "sig": "s.index(sub)", "desc": "Як `find`, але якщо не знайдено — `ValueError`."}, {"ex": "\"banana\".count(\"an\"), \"aaaa\".count(\"aa\")", "out": "(2, 2)", "err": false, "stdout": "", "note": "", "group": "Пошук", "name": "count", "sig": "s.count(sub)", "desc": "Кількість входжень без перекриття."}, {"ex": "\"+380671234567\".startswith(\"+380\")", "out": "True", "err": false, "stdout": "", "note": "", "group": "Пошук", "name": "startswith", "sig": "s.startswith(prefix)", "desc": "Чи починається з префікса."}, {"ex": "\"photo.JPG\".lower().endswith((\".jpg\", \".png\"))", "out": "True", "err": false, "stdout": "", "note": "", "group": "Пошук", "name": "endswith(tuple)", "sig": "s.endswith((a, b))", "desc": "Можна передати кортеж варіантів."}, {"ex": "\"World\" in s, \"world\" in s", "out": "(True, False)", "err": false, "stdout": "", "note": "", "group": "Пошук", "name": "in", "sig": "sub in s", "desc": "Оператор: чи є підрядок."}, {"ex": "s.replace(\"World\", \"Python\")", "out": "'  Hello, Python!  '", "err": false, "stdout": "", "note": "", "group": "Заміна", "name": "replace", "sig": "s.replace(old, new, count=-1)", "desc": "Замінює всі входження."}, {"ex": "\"a-b-c-d\".replace(\"-\", \"+\", 2)", "out": "'a+b+c-d'", "err": false, "stdout": "", "note": "", "group": "Заміна", "name": "replace(count)", "sig": "s.replace(a, b, n)", "desc": "Лише перші n."}, {"ex": "\"hello\".translate(str.maketrans(\"el\", \"EL\"))", "out": "'hELLo'", "err": false, "stdout": "", "note": "", "group": "Заміна", "name": "translate", "sig": "s.translate(table)", "desc": "Заміна посимвольно за таблицею з `str.maketrans`."}, {"ex": "\"+38 (067) 123-45-67\".translate(str.maketrans(\"\", \"\", \" ()-\"))", "out": "'+380671234567'", "err": false, "stdout": "", "note": "", "group": "Заміна", "name": "maketrans: видалення", "sig": "str.maketrans(\"\", \"\", chars)", "desc": "Третій аргумент — символи, які треба видалити."}, {"ex": "\"Київ\".translate(str.maketrans({\"К\": \"K\", \"и\": \"y\", \"ї\": \"yi\", \"в\": \"v\"}))", "out": "'Kyyiv'", "err": false, "stdout": "", "note": "", "group": "Заміна", "name": "maketrans: словник", "sig": "str.maketrans({ch: str})", "desc": "Словник дозволяє замінити символ на кілька символів."}, {"ex": "\"Привіт\".lower(), \"Привіт\".upper()", "out": "('привіт', 'ПРИВІТ')", "err": false, "stdout": "", "note": "", "group": "Регістр", "name": "lower / upper", "sig": "s.lower(), s.upper()", "desc": "Усі літери малі або великі."}, {"ex": "title.capitalize()", "out": "'Python для початківців'", "err": false, "stdout": "", "note": "", "group": "Регістр", "name": "capitalize", "sig": "s.capitalize()", "desc": "Перша літера велика, решта малі."}, {"ex": "title.title()", "out": "'Python Для Початківців'", "err": false, "stdout": "", "note": "", "group": "Регістр", "name": "title", "sig": "s.title()", "desc": "Кожне слово з великої."}, {"ex": "\"PyThOn\".swapcase()", "out": "'pYtHoN'", "err": false, "stdout": "", "note": "", "group": "Регістр", "name": "swapcase", "sig": "s.swapcase()", "desc": "Міняє регістр кожної літери."}, {"ex": "\"Straße\".lower() == \"STRASSE\".lower(), \"Straße\".casefold() == \"STRASSE\".casefold()", "out": "(False, True)", "err": false, "stdout": "", "note": "", "group": "Регістр", "name": "casefold", "sig": "s.casefold()", "desc": "Агресивніше за `lower()`, для порівняння без регістру."}, {"ex": "\"2025\".isdigit(), \"-5\".isdigit(), \"3.14\".isdigit()", "out": "(True, False, False)", "err": false, "stdout": "", "note": "", "group": "Перевірки is*", "name": "isdigit", "sig": "s.isdigit()", "desc": "Лише цифри. Мінус і крапка — не цифри."}, {"ex": "\"²\".isdigit(), \"²\".isdecimal(), \"½\".isnumeric()", "out": "(True, False, True)", "err": false, "stdout": "", "note": "", "group": "Перевірки is*", "name": "isdecimal / isnumeric", "sig": "s.isdecimal(), s.isnumeric()", "desc": "`isdecimal` — найсуворіша (лише 0–9 та аналоги), `isnumeric` — найширша."}, {"ex": "\"Їжак\".isalpha(), \"Їжак 1\".isalpha()", "out": "(True, False)", "err": false, "stdout": "", "note": "", "group": "Перевірки is*", "name": "isalpha", "sig": "s.isalpha()", "desc": "Лише літери будь-якої абетки."}, {"ex": "\"user42\".isalnum(), \"user_42\".isalnum()", "out": "(True, False)", "err": false, "stdout": "", "note": "", "group": "Перевірки is*", "name": "isalnum", "sig": "s.isalnum()", "desc": "Літери або цифри."}, {"ex": "\" \\t\\n\".isspace(), \"\".isspace()", "out": "(True, False)", "err": false, "stdout": "", "note": "", "group": "Перевірки is*", "name": "isspace", "sig": "s.isspace()", "desc": "Лише пробільні символи. Порожній рядок — `False`."}, {"ex": "\"ABC1\".isupper(), \"AbC\".islower()", "out": "(True, False)", "err": false, "stdout": "", "note": "", "group": "Перевірки is*", "name": "isupper / islower", "sig": "s.isupper(), s.islower()", "desc": "Усі літери у верхньому / нижньому регістрі."}, {"ex": "\"Hello World\".istitle()", "out": "True", "err": false, "stdout": "", "note": "", "group": "Перевірки is*", "name": "istitle", "sig": "s.istitle()", "desc": "Кожне слово з великої."}, {"ex": "\"my_var\".isidentifier(), \"2var\".isidentifier()", "out": "(True, False)", "err": false, "stdout": "", "note": "", "group": "Перевірки is*", "name": "isidentifier", "sig": "s.isidentifier()", "desc": "Чи може бути іменем змінної."}], "ops": [{"ex": "t = \"hello\"\nt.upper()\nt", "out": "'hello'", "err": false, "stdout": "", "note": "метод повернув новий рядок, `t` не змінився"}, {"ex": "\"commodore.com\".strip(\".com\")", "out": "'dore'", "err": false, "stdout": "", "note": "`strip` прибирає символи з набору, а не суфікс"}, {"ex": "\"commodore.com\".removesuffix(\".com\")", "out": "'commodore'", "err": false, "stdout": "", "note": "для суфікса — `removesuffix`"}, {"ex": "\"a  b\".split(\" \"), \"a  b\".split()", "out": "(['a', '', 'b'], ['a', 'b'])", "err": false, "stdout": "", "note": "з роздільником `\" \"` з'являються порожні рядки"}, {"ex": "\"\".split(\",\"), \"\".split()", "out": "([''], [])", "err": false, "stdout": "", "note": "порожній рядок дає різні результати"}, {"ex": "\", \".join([1, 2, 3])", "out": "TypeError: sequence item 0: expected str instance, int found", "err": true, "stdout": "", "note": "`join` приймає лише рядки"}, {"ex": "\", \".join(map(str, [1, 2, 3]))", "out": "'1, 2, 3'", "err": false, "stdout": "", "note": "спочатку перетворіть на `str`"}, {"ex": "t = \"Hello\"\nif t.find(\"H\"):\n    print(\"знайшли\")\nelse:\n    print(\"не знайшли?!\")", "out": "", "err": false, "stdout": "не знайшли?!\n", "note": "індекс 0 — хибне значення; перевіряйте `!= -1` або `in`"}, {"ex": "\"abc\".index(\"z\")", "out": "ValueError: substring not found", "err": true, "stdout": "", "note": "`index` кидає помилку там, де `find` дає -1"}, {"ex": "\"don't stop\".title()", "out": "\"Don'T Stop\"", "err": false, "stdout": "", "note": "`title()` вважає апостроф межею слова"}, {"ex": "\"-5\".isdigit(), int(\"-5\")", "out": "(False, -5)", "err": false, "stdout": "", "note": "для перевірки числа надійніше спробувати `int()`"}]}, {"key": "re", "label": "re", "kind": "api", "title": "Модуль re", "tagline": "Регулярний вираз — шаблон для пошуку тексту за його формою. Модуль `re` знаходить збіги, витягує частини, замінює й розбиває рядки.", "chips": ["re.search(p, s)", "re.findall(p, s)", "re.sub(p, repl, s)", "re.compile(p)", "m.group(1)", "re.I"], "imp": "import re\ntext = \"Замовлення #1042 від 05.04.2025, сума 1250.50 грн. Тел.: 067-123-45-67\"\nm = re.search(r\"(\\d{2})\\.(\\d{2})\\.(\\d{4})\", text)\nn = re.search(r\"(?P<day>\\d{2})\\.(?P<month>\\d{2})\\.(?P<year>\\d{4})\", text)", "props": [{"t": "Окрема мова", "d": "Синтаксис шаблонів майже однаковий у Python, JavaScript, Java, SQL, редакторах коду й `grep`. Вивчивши раз, користуєтеся всюди."}, {"t": "Коли потрібен", "d": "Коли текст треба знайти за **формою**, а не точним значенням: телефони, email, дати, IP, ціни. Для звичайного підрядка вистачить `in`, `find`, `replace`: вони простіші й швидші."}, {"t": "Завжди r\"...\"", "d": "Шаблон пишуть сирим рядком, щоб `\\b`, `\\d` дійшли до `re` без змін."}, {"t": "Match або None", "d": "`search`, `match`, `fullmatch` повертають об'єкт `Match` або `None`. Перед `.group()` перевіряйте `if m:`."}], "methods": [{"ex": "re.search(r\"\\d+\", text)", "out": "<re.Match object; span=(12, 16), match='1042'>", "err": false, "stdout": "", "note": "", "group": "Один збіг", "name": "search", "sig": "re.search(pattern, string, flags=0)", "desc": "Перший збіг у будь-якому місці рядка."}, {"ex": "re.match(r\"\\d+\", text)", "out": "None", "err": false, "stdout": "", "note": "", "group": "Один збіг", "name": "match", "sig": "re.match(pattern, string)", "desc": "Збіг лише на початку рядка."}, {"ex": "re.match(r\"Замовлення\", text)", "out": "<re.Match object; span=(0, 10), match='Замовлення'>", "err": false, "stdout": "", "note": "", "group": "Один збіг", "name": "match (успіх)", "sig": "re.match(pattern, string)", "desc": "Рядок починається з шаблону."}, {"ex": "re.fullmatch(r\"\\d{3}-\\d{3}-\\d{2}-\\d{2}\", \"067-123-45-67\")", "out": "<re.Match object; span=(0, 13), match='067-123-45-67'>", "err": false, "stdout": "", "note": "", "group": "Один збіг", "name": "fullmatch", "sig": "re.fullmatch(pattern, string)", "desc": "Увесь рядок має відповідати шаблону. Для валідації."}, {"ex": "re.findall(r\"\\d+\", text)", "out": "['1042', '05', '04', '2025', '1250', '50', '067', '123', '45', '67']", "err": false, "stdout": "", "note": "", "group": "Усі збіги", "name": "findall", "sig": "re.findall(pattern, string)", "desc": "Список усіх збігів-рядків."}, {"ex": "re.findall(r\"#(\\d+)\", text)", "out": "['1042']", "err": false, "stdout": "", "note": "", "group": "Усі збіги", "name": "findall + 1 група", "sig": "re.findall(r\"x(...)\", s)", "desc": "Якщо в шаблоні одна група — список лише її вмісту."}, {"ex": "re.findall(r\"(\\d{2})\\.(\\d{2})\\.(\\d{4})\", text)", "out": "[('05', '04', '2025')]", "err": false, "stdout": "", "note": "", "group": "Усі збіги", "name": "findall + кілька груп", "sig": "re.findall(r\"(.)(.)\", s)", "desc": "Кілька груп — список кортежів."}, {"ex": "for x in re.finditer(r\"\\d+\", \"067-123-45-67\"):\n    print(x.group(), x.span())", "out": "", "err": false, "stdout": "067 (0, 3)\n123 (4, 7)\n45 (8, 10)\n67 (11, 13)\n", "note": "", "group": "Усі збіги", "name": "finditer", "sig": "re.finditer(pattern, string)", "desc": "Ітератор об'єктів `Match`: є і текст, і позиції, і групи."}, {"ex": "re.sub(r\"\\d\", \"*\", \"067-123-45-67\")", "out": "'***-***-**-**'", "err": false, "stdout": "", "note": "", "group": "Заміна і розбиття", "name": "sub", "sig": "re.sub(pattern, repl, string, count=0)", "desc": "Замінює всі збіги."}, {"ex": "re.sub(r\"(\\d{2})\\.(\\d{2})\\.(\\d{4})\", r\"\\3-\\2-\\1\", text)", "out": "'Замовлення #1042 від 2025-04-05, сума 1250.50 грн. Тел.: 067-123-45-67'", "err": false, "stdout": "", "note": "", "group": "Заміна і розбиття", "name": "sub з групами", "sig": "re.sub(p, r\"\\2 \\1\", s)", "desc": "У заміні `\\1`, `\\2` — вміст груп."}, {"ex": "re.sub(r\"\\d+\", lambda x: str(int(x.group()) * 2), \"3 яблука і 10 груш\")", "out": "'6 яблука і 20 груш'", "err": false, "stdout": "", "note": "", "group": "Заміна і розбиття", "name": "sub з функцією", "sig": "re.sub(p, func, s)", "desc": "Функція отримує `Match` і повертає рядок заміни."}, {"ex": "re.sub(r\"\\d\", \"#\", \"a1b2c3\", count=2)", "out": "'a#b#c3'", "err": false, "stdout": "", "note": "", "group": "Заміна і розбиття", "name": "sub(count)", "sig": "re.sub(p, r, s, count=n)", "desc": "Лише перші n замін."}, {"ex": "re.subn(r\"\\s+\", \" \", \"a   b \\t c\")", "out": "('a b c', 2)", "err": false, "stdout": "", "note": "", "group": "Заміна і розбиття", "name": "subn", "sig": "re.subn(pattern, repl, string)", "desc": "Як `sub`, але повертає ще й кількість замін."}, {"ex": "re.split(r\"[,;\\s]+\", \"a, b;c  d\")", "out": "['a', 'b', 'c', 'd']", "err": false, "stdout": "", "note": "", "group": "Заміна і розбиття", "name": "split", "sig": "re.split(pattern, string)", "desc": "Розбиває за шаблоном, наприклад за кількома різними роздільниками."}, {"ex": "re.split(r\"([+-])\", \"10+20-5\")", "out": "['10', '+', '20', '-', '5']", "err": false, "stdout": "", "note": "", "group": "Заміна і розбиття", "name": "split з групою", "sig": "re.split(r\"(sep)\", s)", "desc": "Група в шаблоні — роздільники теж потрапляють у список."}, {"ex": "phone = re.compile(r\"\\d{3}-\\d{3}-\\d{2}-\\d{2}\")\nphone.search(text).group()", "out": "'067-123-45-67'", "err": false, "stdout": "", "note": "", "group": "Компіляція", "name": "compile", "sig": "re.compile(pattern, flags=0)", "desc": "Готовий об'єкт шаблону для повторного використання. Ті самі методи, без аргументу шаблону."}, {"ex": "word = re.compile(r\"\\w+\")\nword.findall(\"Привіт, світ!\")", "out": "['Привіт', 'світ']", "err": false, "stdout": "", "note": "", "group": "Компіляція", "name": "методи Pattern", "sig": "p.findall(s), p.sub(r, s)", "desc": "У `Pattern` є `search`, `match`, `fullmatch`, `findall`, `finditer`, `sub`, `split`."}, {"ex": "p = re.compile(r\"(\\d+)-(\\d+)\")\np.pattern, p.groups", "out": "('(\\\\d+)-(\\\\d+)', 2)", "err": false, "stdout": "", "note": "", "group": "Компіляція", "name": "атрибути Pattern", "sig": "p.pattern, p.groups", "desc": "Вихідний шаблон і кількість груп."}, {"ex": "m.group()", "out": "'05.04.2025'", "err": false, "stdout": "", "note": "", "group": "Об'єкт Match", "name": "group()", "sig": "m.group(0)", "desc": "Увесь збіг."}, {"ex": "m.group(3), m[1]", "out": "('2025', '05')", "err": false, "stdout": "", "note": "", "group": "Об'єкт Match", "name": "group(n) / m[n]", "sig": "m.group(n), m[n]", "desc": "Вміст n-ї групи. Нумерація з 1."}, {"ex": "m.groups()", "out": "('05', '04', '2025')", "err": false, "stdout": "", "note": "", "group": "Об'єкт Match", "name": "groups()", "sig": "m.groups()", "desc": "Кортеж усіх груп."}, {"ex": "n.group(\"year\"), n[\"month\"]", "out": "('2025', '04')", "err": false, "stdout": "", "note": "", "group": "Об'єкт Match", "name": "іменована група", "sig": "m.group(\"name\"), m[\"name\"]", "desc": "Група `(?P<name>...)` доступна за назвою."}, {"ex": "n.groupdict()", "out": "{'day': '05', 'month': '04', 'year': '2025'}", "err": false, "stdout": "", "note": "", "group": "Об'єкт Match", "name": "groupdict()", "sig": "m.groupdict()", "desc": "Словник іменованих груп."}, {"ex": "m.start(), m.end(), m.span()", "out": "(21, 31, (21, 31))", "err": false, "stdout": "", "note": "", "group": "Об'єкт Match", "name": "start / end / span", "sig": "m.start(), m.end(), m.span()", "desc": "Позиції збігу в рядку."}, {"ex": "re.findall(r\"python\", \"Python PYTHON python\", re.I)", "out": "['Python', 'PYTHON', 'python']", "err": false, "stdout": "", "note": "", "group": "Прапорці", "name": "re.IGNORECASE / re.I", "sig": "re.I", "desc": "Без урахування регістру."}, {"ex": "re.findall(r\"^\\w+\", \"раз два\\nтри чотири\", re.M)", "out": "['раз', 'три']", "err": false, "stdout": "", "note": "", "group": "Прапорці", "name": "re.MULTILINE / re.M", "sig": "re.M", "desc": "`^` і `$` діють на кожен рядок тексту."}, {"ex": "re.search(r\"<p>.*<\/p>\", \"<p>раз\\nдва<\/p>\", re.S).group()", "out": "'<p>раз\\nдва<\/p>'", "err": false, "stdout": "", "note": "", "group": "Прапорці", "name": "re.DOTALL / re.S", "sig": "re.S", "desc": "`.` ловить і `\\n`."}, {"ex": "date = re.compile(r\"\"\"\n    (\\d{2}) \\.   # день\n    (\\d{2}) \\.   # місяць\n    (\\d{4})      # рік\n\"\"\", re.X)\ndate.search(text).groups()", "out": "('05', '04', '2025')", "err": false, "stdout": "", "note": "", "group": "Прапорці", "name": "re.VERBOSE / re.X", "sig": "re.X", "desc": "Пробіли в шаблоні ігноруються, можна писати коментарі."}, {"ex": "re.findall(r\"^error\", \"Error 1\\nerror 2\", re.I | re.M)", "out": "['Error', 'error']", "err": false, "stdout": "", "note": "", "group": "Прапорці", "name": "кілька прапорців", "sig": "re.I | re.M", "desc": "Поєднуються через `|`."}, {"ex": "re.findall(r\"(?i)грн\", \"100 ГРН і 50 грн\")", "out": "['ГРН', 'грн']", "err": false, "stdout": "", "note": "", "group": "Прапорці", "name": "(?i) у шаблоні", "sig": "\"(?i)...\"", "desc": "Прапорець прямо на початку шаблону."}, {"ex": "re.escape(\"$4.99?\")", "out": "'\\\\$4\\\\.99\\\\?'", "err": false, "stdout": "", "note": "", "group": "Допоміжне", "name": "escape", "sig": "re.escape(string)", "desc": "Екранує спецсимволи, щоб шукати текст буквально."}], "ops": [{"ex": "re.match(r\"\\d+\", \"Тел 067\"), re.search(r\"\\d+\", \"Тел 067\")", "out": "(None, <re.Match object; span=(4, 7), match='067'>)", "err": false, "stdout": "", "note": "`match` — лише з початку рядка"}, {"ex": "bool(re.search(r\"\\d{4}\", \"12345\")), bool(re.fullmatch(r\"\\d{4}\", \"12345\"))", "out": "(True, False)", "err": false, "stdout": "", "note": "для валідації — `fullmatch`"}, {"ex": "re.search(r\"\\d+\", \"без цифр\").group()", "out": "AttributeError: 'NoneType' object has no attribute 'group'", "err": true, "stdout": "", "note": "збігу немає: `None.group()`"}, {"ex": "if x := re.search(r\"#(\\d+)\", text):\n    print(x[1])", "out": "", "err": false, "stdout": "1042\n", "note": "перевірка й присвоєння разом"}, {"ex": "re.findall(r\"\\d+(\\.\\d+)?\", \"1.5 2 3.25\")", "out": "['.5', '', '.25']", "err": false, "stdout": "", "note": "з групою `findall` повертає лише групу"}, {"ex": "re.findall(r\"\\d+(?:\\.\\d+)?\", \"1.5 2 3.25\")", "out": "['1.5', '2', '3.25']", "err": false, "stdout": "", "note": "`(?:...)` групує, але не захоплює"}, {"ex": "re.findall(r\"<.+>\", \"<b>жирний<\/b>\")", "out": "['<b>жирний<\/b>']", "err": false, "stdout": "", "note": "квантифікатор жадібний"}, {"ex": "re.findall(r\"<.+?>\", \"<b>жирний<\/b>\")", "out": "['<b>', '<\/b>']", "err": false, "stdout": "", "note": "`?` робить його лінивим"}, {"ex": "re.findall(r\"3.14\", \"3.14 3x14\")", "out": "['3.14', '3x14']", "err": false, "stdout": "", "note": "`.` — будь-який символ"}, {"ex": "re.findall(r\"3\\.14\", \"3.14 3x14\")", "out": "['3.14']", "err": false, "stdout": "", "note": "`\\.` — саме крапка"}, {"ex": "re.findall(r\"\\w+\", \"Привіт_світ 42 café!\")", "out": "['Привіт_світ', '42', 'café']", "err": false, "stdout": "", "note": "`\\w` — літери будь-якої абетки, цифри й `_`"}, {"ex": "re.findall(r\"\\d\", \"٣ 3\"), re.findall(r\"[0-9]\", \"٣ 3\")", "out": "(['٣', '3'], ['3'])", "err": false, "stdout": "", "note": "`\\d` ловить цифри будь-якої писемності"}]}, {"key": "spec", "label": "Специфікатори", "kind": "table", "sep": true, "title": "Специфікація формату", "tagline": "Те, що стоїть після `:` у f-рядку, у `str.format()` і в `format()`. Повна схема: `[[fill]align][sign][z][#][0][width][grouping][.precision][type]`.", "imp": "from datetime import datetime\nn = 1234567.891\nx = 42\ns = \"Python\"", "tableTitle": "Усі частини специфікації", "tableSub": "у порядку, в якому їх пишуть", "cols": ["Специфікатор", "Що означає", "Приклад", "Результат"], "groups": [{"name": "Вирівнювання і ширина", "rows": [{"code": "<", "desc": "Ліворуч у полі. За замовчуванням для рядків.", "ex": "f\"[{s:<10}]\"", "out": "'[Python    ]'", "err": false}, {"code": ">", "desc": "Праворуч. За замовчуванням для чисел.", "ex": "f\"[{s:>10}]\"", "out": "'[    Python]'", "err": false}, {"code": "^", "desc": "По центру.", "ex": "f\"[{s:^10}]\"", "out": "'[  Python  ]'", "err": false}, {"code": "=", "desc": "Заповнення між знаком і цифрами. Лише для чисел.", "ex": "f\"[{-x:=8}]\"", "out": "'[-     42]'", "err": false}, {"code": "fill", "desc": "Символ заповнення пишуть перед вирівнюванням.", "ex": "f\"[{s:*^12}] [{x:.>6}]\"", "out": "'[***Python***] [....42]'", "err": false}, {"code": "width", "desc": "Мінімальна ширина. Довше значення не обрізається.", "ex": "f\"[{s:3}]\"", "out": "'[Python]'", "err": false}, {"code": "0width", "desc": "Нулі зліва для чисел, знак лишається попереду.", "ex": "f\"{x:05} {-x:06}\"", "out": "'00042 -00042'", "err": false}]}, {"name": "Знак", "rows": [{"code": "+", "desc": "Знак завжди, і для додатних.", "ex": "f\"{x:+} {-x:+}\"", "out": "'+42 -42'", "err": false}, {"code": "-", "desc": "Знак лише для від'ємних (за замовчуванням).", "ex": "f\"{x:-} {-x:-}\"", "out": "'42 -42'", "err": false}, {"code": "пробіл", "desc": "Пробіл замість `+`: колонки чисел вирівнюються.", "ex": "f\"[{x: }] [{-x: }]\"", "out": "'[ 42] [-42]'", "err": false}, {"code": "z", "desc": "Перетворює `-0.00` на `0.00` після округлення (3.11+).", "ex": "f\"{-0.001:.2f} {-0.001:z.2f}\"", "out": "'-0.00 0.00'", "err": false}]}, {"name": "Цілі числа", "rows": [{"code": "d", "desc": "Десяткове ціле.", "ex": "f\"{x:d}\"", "out": "'42'", "err": false}, {"code": "b", "desc": "Двійкове.", "ex": "f\"{x:b} {5:08b}\"", "out": "'101010 00000101'", "err": false}, {"code": "o", "desc": "Вісімкове.", "ex": "f\"{x:o}\"", "out": "'52'", "err": false}, {"code": "x / X", "desc": "Шістнадцяткове, малі або великі літери.", "ex": "f\"{255:x} {255:X}\"", "out": "'ff FF'", "err": false}, {"code": "#", "desc": "Префікс системи числення.", "ex": "f\"{255:#x} {x:#b} {x:#o}\"", "out": "'0xff 0b101010 0o52'", "err": false}, {"code": "c", "desc": "Символ за кодом Unicode.", "ex": "f\"{65:c}{1111:c}\"", "out": "'Aї'", "err": false}]}, {"name": "Дробові числа", "rows": [{"code": ".Nf", "desc": "N знаків після крапки.", "ex": "f\"{n:.2f} {n:.0f}\"", "out": "'1234567.89 1234568'", "err": false}, {"code": "f", "desc": "Без точності: 6 знаків.", "ex": "f\"{x:f}\"", "out": "'42.000000'", "err": false}, {"code": "e / E", "desc": "Науковий запис.", "ex": "f\"{n:e} {n:.2E}\"", "out": "'1.234568e+06 1.23E+06'", "err": false}, {"code": "g", "desc": "Коротший із фіксованого й наукового, без зайвих нулів.", "ex": "f\"{n:g} {0.00001234:g} {2.50:g}\"", "out": "'1.23457e+06 1.234e-05 2.5'", "err": false}, {"code": "%", "desc": "Множить на 100 і додає `%`.", "ex": "f\"{0.4567:.1%} {19/22:.0%}\"", "out": "'45.7% 86%'", "err": false}]}, {"name": "Розряди", "rows": [{"code": ",", "desc": "Кома між тисячами.", "ex": "f\"{n:,.2f}\"", "out": "'1,234,567.89'", "err": false}, {"code": "_", "desc": "Підкреслення між тисячами; для `x`/`b` групи по 4.", "ex": "f\"{n:_.2f} {0xFFFFFFFF:_x}\"", "out": "'1_234_567.89 ffff_ffff'", "err": false}, {"code": "пробіл між розрядами", "desc": "Окремого коду немає: замініть кому.", "ex": "f\"{n:,.2f}\".replace(\",\", \" \")", "out": "'1 234 567.89'", "err": false}]}, {"name": "Рядки", "rows": [{"code": ".N", "desc": "Обрізає рядок до N символів.", "ex": "f\"{s:.3}\"", "out": "'Pyt'", "err": false}, {"code": "width.N", "desc": "Обрізати й вирівняти разом.", "ex": "f\"[{s:>8.3}]\"", "out": "'[     Pyt]'", "err": false}]}, {"name": "Динамічні значення", "rows": [{"code": "{w}.{p}", "desc": "Ширина й точність зі змінних.", "ex": "w, p = 12, 3\nf\"[{n:{w}.{p}f}]\"", "out": "'[ 1234567.891]'", "err": false}, {"code": "{fill}{align}", "desc": "Будь-яку частину можна підставити.", "ex": "fill, al = \"-\", \"^\"\nf\"{s:{fill}{al}14}\"", "out": "'----Python----'", "err": false}]}, {"name": "Дати", "rows": [{"code": "%d.%m.%Y", "desc": "Для `datetime` після `:` пишуть коди `strftime` (див. шпаргалку модуля 03).", "ex": "f\"{datetime(2025, 4, 5):%d.%m.%Y}\"", "out": "'05.04.2025'", "err": false}]}], "notes": ["Порядок частин фіксований: `f\"{n:*>+16,.2f}\"` — заповнення `*`, праворуч, знак, ширина 16, коми, 2 знаки.", "Ширина — це мінімум. Обрізати можна лише рядок і лише точністю `.N`; числа не обрізаються ніколи.", "Рядки за замовчуванням вирівнюються ліворуч, числа праворуч.", "Та сама специфікація працює в `format(value, spec)` і в `\"{:spec}\".format(value)`."], "sections": [{"name": "Поєднання та помилки", "cells": [{"ex": "f\"{n:*>+16,.2f}\"", "out": "'***+1,234,567.89'", "err": false, "stdout": "", "note": "заповнення, вирівнювання, знак, ширина, розряди, точність"}, {"ex": "format(n, \",.1f\")", "out": "'1,234,567.9'", "err": false, "stdout": "", "note": "вбудована `format()` — та сама специфікація"}, {"ex": "\"{:>8.2f}|\".format(3.14159)", "out": "'    3.14|'", "err": false, "stdout": "", "note": "і в `str.format()`"}, {"ex": "f\"{255:,x}\"", "out": "ValueError: Cannot specify ',' with 'x'.", "err": true, "stdout": "", "note": "кому не можна з `x`, `b`, `o`"}, {"ex": "f\"{s:,}\"", "out": "ValueError: Cannot specify ',' with 's'.", "err": true, "stdout": "", "note": "розряди лише для чисел"}, {"ex": "f\"{s:08}\"", "out": "'Python00'", "err": false, "stdout": "", "note": "для рядка `0` — просто заповнювач, і він стає праворуч"}]}, {"name": "Таблиця з вирівнюванням", "cells": [{"ex": "rows = [(\"Кава\", 2, 65.0), (\"Круасан\", 1, 48.5)]\nfor name, qty, p in rows:\n    print(f\"{name:<10}{qty:>3} × {p:>6.2f}\")", "out": "", "err": false, "stdout": "Кава        2 ×  65.00\nКруасан     1 ×  48.50\n", "note": "однакова ширина полів у кожному рядку"}]}]}, {"key": "escapes", "label": "Спецсимволи", "kind": "table", "title": "Спецсимволи та сирі рядки", "tagline": "Послідовності зі зворотною скісною рискою `\\`: так у рядок записують перенесення рядка, табуляцію, лапки чи символ за кодом. Префікс `r` вимикає їх обробку.", "imp": "import re", "tableTitle": "Послідовності", "tableSub": "якщо приклад друкує, у «Результаті» видно сам вивід", "cols": ["Запис", "Що означає", "Приклад", "Результат"], "groups": [{"name": "Пробільні", "rows": [{"code": "\\n", "desc": "Перенесення рядка.", "ex": "print(\"Рядок 1\\nРядок 2\")", "out": "Рядок 1\nРядок 2", "err": false}, {"code": "\\t", "desc": "Табуляція: стрибок до наступної позиції, кратної 8.", "ex": "print(\"Ім'я\\tВік\\nОлена\\t25\")", "out": "Ім'я\tВік\nОлена\t25", "err": false}, {"code": "\\r", "desc": "Повернення каретки: курсор на початок рядка. У терміналі наступний текст перезаписує попередній (індикатори прогресу). Windows закінчує рядки `\\r\\n`.", "ex": "\"50%\\r100%\".split(\"\\r\")", "out": "['50%', '100%']", "err": false}, {"code": "\\v  \\f", "desc": "Вертикальна табуляція та нова сторінка. Трапляються рідко, але це теж пробільні символи.", "ex": "\"a\\vb\\fc\".split()", "out": "['a', 'b', 'c']", "err": false}]}, {"name": "Лапки й риска", "rows": [{"code": "\\\\", "desc": "Сама зворотна риска.", "ex": "print(\"C:\\\\Users\\\\olena\")", "out": "C:\\Users\\olena", "err": false}, {"code": "\\'", "desc": "Апостроф у рядку в одинарних лапках.", "ex": "print('It\\'s OK')", "out": "It's OK", "err": false}, {"code": "\\\"", "desc": "Лапки в рядку в подвійних лапках.", "ex": "print(\"Він сказав: \\\"Привіт\\\"\")", "out": "Він сказав: \"Привіт\"", "err": false}]}, {"name": "Символ за кодом", "rows": [{"code": "\\xhh", "desc": "Символ за 2 шістнадцятковими цифрами.", "ex": "\"\\x41\\x42\"", "out": "'AB'", "err": false}, {"code": "\\uXXXX", "desc": "Символ Unicode за 4 цифрами.", "ex": "\"\\u0407\\u0436\\u0430\\u043a\"", "out": "'Їжак'", "err": false}, {"code": "\\UXXXXXXXX", "desc": "Символ Unicode за 8 цифрами (емодзі тощо).", "ex": "\"\\U0001F40D\"", "out": "'🐍'", "err": false}, {"code": "\\N{name}", "desc": "Символ Unicode за назвою.", "ex": "\"\\N{SNAKE} \\N{CYRILLIC CAPITAL LETTER YI}\"", "out": "'🐍 Ї'", "err": false}, {"code": "\\ooo  \\0", "desc": "Вісімковий код; `\\0` — нульовий символ.", "ex": "\"\\101\", len(\"\\0\")", "out": "('A', 1)", "err": false}, {"code": "\\b", "desc": "Backspace (код 8). У regex `\\b` — межа слова, тому шаблони пишуть як `r\"...\"`.", "ex": "len(\"\\b\"), ord(\"\\b\")", "out": "(1, 8)", "err": false}]}, {"name": "Сирі рядки r\"...\"", "rows": [{"code": "r\"\\n\"", "desc": "Префікс `r`: зворотна риска — звичайний символ.", "ex": "len(r\"\\n\"), len(\"\\n\")", "out": "(2, 1)", "err": false}, {"code": "r\"C:\\new\"", "desc": "Шляхи Windows без подвоєння риски.", "ex": "print(r\"C:\\new\\table\")", "out": "C:\\new\\table", "err": false}, {"code": "r\"\\d+\"", "desc": "Шаблони регулярних виразів.", "ex": "print(r\"\\d+\\b\")", "out": "\\d+\\b", "err": false}, {"code": "rf\"...\"", "desc": "Сирий f-рядок: і підстановка, і риски як є.", "ex": "folder = \"docs\"\nprint(rf\"C:\\{folder}\\new\")", "out": "C:\\docs\\new", "err": false}]}, {"name": "Як побачити спецсимволи", "rows": [{"code": "repr()", "desc": "Показує запис рядка замість дії спецсимволів.", "ex": "print(repr(\"a\\tb\\n\"))", "out": "'a\\tb\\n'", "err": false}, {"code": "ord() / chr()", "desc": "Код символу і символ за кодом.", "ex": "ord(\"Ї\"), chr(1031), hex(ord(\"Ї\"))", "out": "(1031, 'Ї', '0x407')", "err": false}]}], "notes": ["`print()` показує дію спецсимволу, а REPL і `repr()` показують сам запис: `'a\\nb'`.", "`len()` рахує спецсимвол як один символ: `len(\\\"\\n\\\") == 1`.", "Невідома послідовність на кшталт `\\\"\\d\\\"` лишається як є, але Python видає `SyntaxWarning`. Для regex і шляхів Windows завжди пишіть `r\\\"...\\\"`.", "Сирий рядок не може закінчуватися однією зворотною рискою: `r\"C:\\docs\\\"` — помилка синтаксису."], "sections": [{"name": "Підводні камені", "cells": [{"ex": "path = \"C:\\new\\table\"\nprint(path)", "out": "", "err": false, "stdout": "C:\new\table\n", "note": "`\\n` і `\\t` спрацювали: шлях зламано"}, {"ex": "re.findall(\"\\bкіт\\b\", \"кіт і кітка\")", "out": "[]", "err": false, "stdout": "", "note": "без `r` це backspace, а не межа слова"}, {"ex": "re.findall(r\"\\bкіт\\b\", \"кіт і кітка\")", "out": "['кіт']", "err": false, "stdout": "", "note": "сирий рядок: шаблон працює"}, {"ex": "len(\"\\d\"), len(r\"\\d\")", "out": "(2, 2)", "err": false, "stdout": "", "note": "невідома послідовність `\\d` лишилась як є (з попередженням)"}, {"ex": "r\"C:\\docs\\\"", "out": "SyntaxError: unterminated string literal (detected at line 1); perhaps you escaped the end quote?", "err": true, "stdout": "", "note": "сирий рядок не може закінчуватися на `\\`"}, {"ex": "\"рядок 1\\nрядок 2\".splitlines()", "out": "['рядок 1', 'рядок 2']", "err": false, "stdout": "", "note": "розбити текст на рядки"}]}]}, {"key": "syntax", "label": "Синтаксис regex", "kind": "table", "title": "Синтаксис регулярних виразів", "tagline": "Будівельні блоки шаблону. Кожен приклад — справжній виклик `re.findall`, `re.sub` чи `re.search` та його результат.", "imp": "import re", "tableTitle": "Елементи шаблону", "tableSub": "від простого до складного", "cols": ["Шаблон", "Що означає", "Приклад", "Результат"], "groups": [{"name": "Символи", "rows": [{"code": "abc", "desc": "Звичайні символи шукаються буквально.", "ex": "re.findall(r\"кіт\", \"кіт і кітка\")", "out": "['кіт', 'кіт']", "err": false}, {"code": ".", "desc": "Будь-який символ, крім `\\n`.", "ex": "re.findall(r\"к.т\", \"кіт кот к т к\\nт\")", "out": "['кіт', 'кот', 'к т']", "err": false}, {"code": "\\.", "desc": "Екранування: спецсимвол як звичайний. Спецсимволи: `. ^ $ * + ? { } [ ] \\ | ( )`.", "ex": "re.findall(r\"\\d+\\.\\d+\", \"1.5 і 2,5\")", "out": "['1.5']", "err": false}]}, {"name": "Класи символів", "rows": [{"code": "\\d", "desc": "Цифра.", "ex": "re.findall(r\"\\d\", \"a1b22\")", "out": "['1', '2', '2']", "err": false}, {"code": "\\D", "desc": "Не цифра.", "ex": "re.sub(r\"\\D\", \"\", \"+38 (067) 123-45-67\")", "out": "'380671234567'", "err": false}, {"code": "\\w", "desc": "Літера, цифра або `_`.", "ex": "re.findall(r\"\\w+\", \"Привіт, світ_2025!\")", "out": "['Привіт', 'світ_2025']", "err": false}, {"code": "\\W", "desc": "Не `\\w`: пробіли, розділові знаки.", "ex": "re.split(r\"\\W+\", \"раз, два; три!\")", "out": "['раз', 'два', 'три', '']", "err": false}, {"code": "\\s", "desc": "Пробільний символ: пробіл, `\\t`, `\\n`…", "ex": "re.sub(r\"\\s+\", \" \", \"раз   два\\t\\nтри\")", "out": "'раз два три'", "err": false}, {"code": "\\S", "desc": "Не пробільний.", "ex": "re.findall(r\"\\S+\", \" a  bc \")", "out": "['a', 'bc']", "err": false}, {"code": "[abc]", "desc": "Один символ із набору.", "ex": "re.findall(r\"[аеиоуі]\", \"молоко\")", "out": "['о', 'о', 'о']", "err": false}, {"code": "[^abc]", "desc": "Один символ не з набору.", "ex": "re.sub(r\"[^0-9]\", \"\", \"тел: 067-123\")", "out": "'067123'", "err": false}, {"code": "[a-z]", "desc": "Діапазон.", "ex": "re.findall(r\"[A-Z][a-z]+\", \"Kyiv and Lviv\")", "out": "['Kyiv', 'Lviv']", "err": false}, {"code": "[а-яіїєґ]", "desc": "Українські `і ї є ґ` не входять у `а-я`, додавайте їх окремо.", "ex": "re.findall(r\"[а-я]+\", \"їжак\"), re.findall(r\"[а-яіїєґ]+\", \"їжак\")", "out": "(['жак'], ['їжак'])", "err": false}]}, {"name": "Кількість (квантифікатори)", "rows": [{"code": "*", "desc": "0 або більше разів.", "ex": "re.findall(r\"ab*\", \"a ab abbb\")", "out": "['a', 'ab', 'abbb']", "err": false}, {"code": "+", "desc": "1 або більше.", "ex": "re.findall(r\"ab+\", \"a ab abbb\")", "out": "['ab', 'abbb']", "err": false}, {"code": "?", "desc": "0 або 1: необов'язковий елемент.", "ex": "re.findall(r\"colou?r\", \"color colour\")", "out": "['color', 'colour']", "err": false}, {"code": "{n}", "desc": "Рівно n разів.", "ex": "re.findall(r\"\\d{4}\", \"2025-04-05\")", "out": "['2025']", "err": false}, {"code": "{n,m}", "desc": "Від n до m (жадібно бере максимум).", "ex": "re.findall(r\"\\d{2,3}\", \"1 12 123 1234\")", "out": "['12', '123', '123']", "err": false}, {"code": "{n,}", "desc": "n або більше.", "ex": "re.findall(r\"\\d{3,}\", \"1 12 123 12345\")", "out": "['123', '12345']", "err": false}, {"code": "*?  +?  ??", "desc": "Ліниві версії: якомога менше.", "ex": "re.findall(r\"<.+?>\", \"<b>текст<\/b>\")", "out": "['<b>', '<\/b>']", "err": false}]}, {"name": "Якорі (позиції)", "rows": [{"code": "^", "desc": "Початок рядка (з `re.M` — кожного рядка тексту).", "ex": "re.findall(r\"^\\d+\", \"42 і 7\")", "out": "['42']", "err": false}, {"code": "$", "desc": "Кінець рядка.", "ex": "re.findall(r\"\\d+$\", \"42 і 7\")", "out": "['7']", "err": false}, {"code": "\\b", "desc": "Межа слова.", "ex": "re.findall(r\"\\bкіт\\b\", \"кіт, кітка, ловикіт\")", "out": "['кіт']", "err": false}, {"code": "\\B", "desc": "Не межа слова.", "ex": "re.findall(r\"\\Bкіт\", \"кіт, ловикіт\")", "out": "['кіт']", "err": false}, {"code": "\\A  \\Z", "desc": "Початок і кінець усього тексту, навіть з `re.M`.", "ex": "re.findall(r\"\\A\\w+|\\w+\\Z\", \"раз\\nдва\\nтри\", re.M)", "out": "['раз', 'три']", "err": false}]}, {"name": "Групи й альтернативи", "rows": [{"code": "|", "desc": "Або.", "ex": "re.findall(r\"кіт|пес\", \"кіт і пес\")", "out": "['кіт', 'пес']", "err": false}, {"code": "(...)", "desc": "Група, що захоплює вміст.", "ex": "re.findall(r\"(\\w+)@(\\w+)\\.com\", \"ann@mail.com, bob@site.com\")", "out": "[('ann', 'mail'), ('bob', 'site')]", "err": false}, {"code": "(?:...)", "desc": "Група без захоплення: лише для квантифікатора чи `|`.", "ex": "re.findall(r\"(?:ха)+\", \"хахаха ха\")", "out": "['хахаха', 'ха']", "err": false}, {"code": "(?P<name>...)", "desc": "Іменована група.", "ex": "re.search(r\"(?P<user>\\w+)@\", \"ann@mail.com\").group(\"user\")", "out": "'ann'", "err": false}, {"code": "\\1", "desc": "Зворотне посилання: той самий текст, що в групі 1.", "ex": "re.findall(r\"\\b(\\w+) \\1\\b\", \"це це тест тест ok\")", "out": "['це', 'тест']", "err": false}, {"code": "\\1 у заміні", "desc": "У `re.sub` — вміст групи.", "ex": "re.sub(r\"(\\w+) (\\w+)\", r\"\\2 \\1\", \"Шевченко Тарас\")", "out": "'Тарас Шевченко'", "err": false}]}, {"name": "Перевірки навколо", "rows": [{"code": "(?=...)", "desc": "Далі має йти… (не входить у збіг).", "ex": "re.findall(r\"\\d+(?= грн)\", \"5 шт по 100 грн\")", "out": "['100']", "err": false}, {"code": "(?!...)", "desc": "Далі не має йти…", "ex": "re.findall(r\"\\b\\d+\\b(?! грн)\", \"5 шт по 100 грн\")", "out": "['5']", "err": false}, {"code": "(?<=...)", "desc": "Перед збігом має стояти…", "ex": "re.findall(r\"(?<=\\$)\\d+\", \"ціна $25 або 30€\")", "out": "['25']", "err": false}, {"code": "(?<!...)", "desc": "Перед збігом не має стояти…", "ex": "re.findall(r\"\\b(?<!-)\\d+\", \"5 і -3\")", "out": "['5']", "err": false}]}], "notes": ["Квантифікатор діє на один попередній елемент: `ab+` — це `a` і кілька `b`. Для кількох символів: `(?:ab)+`.", "Квантифікатори жадібні: беруть якомога більше. `?` після них (`*?`, `+?`) робить їх лінивими.", "Усередині `[...]` більшість спецсимволів звичайні: `[.]` — це крапка. Особливі лише `^` на початку, `-` між символами, `]` і `\\`.", "`\\w`, `\\d`, `\\s` у Python за замовчуванням Unicode: `\\w` ловить кирилицю, `\\d` — цифри будь-якої писемності.", "Перевірки `(?=...)`, `(?<=...)` не входять у збіг: вони лише дивляться, що стоїть поруч."], "sections": []}]};
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const md = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+
+const KW = new Set("False None True and as assert break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield".split(" "));
+const BI = new Set("abs all any bin bool chr dict divmod frozenset hash hex id int isinstance len list max min oct ord pow print range repr reversed round set sorted str sum tuple type".split(" "));
+function hl(code) {
+  const re = /(#[^\n]*)|([rbfRBF]{0,2}(?:'''[\s\S]*?'''|"""[\s\S]*?"""|'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"))|(\b\d[\d_]*(?:\.\d+)?\b)|([A-Za-z_][A-Za-z0-9_]*)/g;
+  let out = "", last = 0, m;
+  while ((m = re.exec(code))) {
+    out += esc(code.slice(last, m.index));
+    const [t, com, str, num, id] = m;
+    if (com) out += `<span class="tk-c">${esc(t)}</span>`;
+    else if (str) out += `<span class="tk-s">${esc(t)}</span>`;
+    else if (num) out += `<span class="tk-n">${esc(t)}</span>`;
+    else if (KW.has(id)) out += `<span class="tk-k">${esc(t)}</span>`;
+    else if (BI.has(id) && code[m.index - 1] !== ".") out += `<span class="tk-b">${esc(t)}</span>`;
+    else out += esc(t);
+    last = m.index + t.length;
+  }
+  return out + esc(code.slice(last));
+}
+function cell(item) {
+  return `<div class="cell">
+    <pre>${hl(item.ex)}</pre>
+    ${item.stdout ? `<div class="stdout">${esc(item.stdout.trimEnd())}</div>` : ""}
+    ${item.out ? `<div class="res${item.err ? " err" : ""}"><span>${item.err ? esc(item.out) : hl(item.out)}</span></div>` : ""}
+    ${item.note ? `<div class="note">${md(item.note)}</div>` : ""}
+  </div>`;
+}
+const impHtml = imp => `<div class="imp-l">Підготовка (виконано перед кожним прикладом)</div><div class="cell imp"><pre>${hl(imp)}</pre></div>`;
+
+function methodsHtml(tab) {
+  let html = "", group = null;
+  for (const m of tab.methods) {
+    if (m.group && m.group !== group) { group = m.group; html += `<div class="m-group" data-g="${esc(group)}">${esc(group)}</div>`; }
+    html += `<div class="m-row" data-q="${esc((m.name + " " + m.desc + " " + m.sig).toLowerCase())}" data-g="${esc(m.group || "")}">
+      <div><div class="m-name">${esc(m.name)}</div><div class="m-sig">${esc(m.sig)}</div></div>
+      <div class="m-desc">${md(m.desc)}</div>
+      ${cell(m)}</div>`;
+  }
+  return html;
+}
+
+function buildApi(tab) {
+  return `
+    <div class="p-head">
+      <div class="p-name small">${esc(tab.label)}</div>
+      <div><p class="p-tag"><b>${esc(tab.title)}.</b> ${md(tab.tagline)}</p>
+        <div class="chips">${tab.chips.map(l => `<span class="chip">${esc(l)}</span>`).join("")}</div></div>
+    </div>
+    ${impHtml(tab.imp)}
+    <section class="s"><div class="s-h"><h2>Ключові властивості</h2></div>
+      <div class="props">${tab.props.map(pr => `<div class="prop"><h3>${esc(pr.t)}</h3><p>${md(pr.d)}</p></div>`).join("")}</div></section>
+    <section class="s"><div class="s-h"><h2>Методи</h2><span class="sub">позицій: ${tab.methods.length}</span><span class="grow"></span>
+      <input class="filter" type="search" placeholder="Пошук методу" aria-label="Пошук методів"></div>
+      <div class="m-list">${methodsHtml(tab)}</div></section>
+    <section class="s"><div class="s-h"><h2>Операції та підводні камені</h2><span class="sub">реальні результати з Python ${DATA.version}</span></div>
+      <div class="ops">${tab.ops.map(cell).join("")}</div></section>`;
+}
+
+function buildTable(tab) {
+  const rows = tab.groups.map(g => `<tr class="fmt-group"><td colspan="4">${esc(g.name)}</td></tr>` + g.rows.map(r =>
+    `<tr><td class="c"><code>${esc(r.code)}</code></td><td class="wrap">${md(r.desc)}</td><td class="ex">${hl(r.ex)}</td><td class="ex out${r.err ? " err" : ""}">${esc(r.out)}</td></tr>`).join("")).join("");
+  return `
+    <div class="p-head">
+      <div class="p-name small">${esc(tab.label)}</div>
+      <div><p class="p-tag"><b>${esc(tab.title)}.</b> ${md(tab.tagline)}</p></div>
+    </div>
+    ${impHtml(tab.imp)}
+    <section class="s"><div class="s-h"><h2>${esc(tab.tableTitle)}</h2><span class="sub">${esc(tab.tableSub)}</span></div>
+      <div class="tbl-scroll"><table class="t fmt"><thead><tr>${tab.cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>
+    </section>
+    <section class="s"><div class="s-h"><h2>На що звернути увагу</h2></div><ul class="notes">${tab.notes.map(n => `<li>${md(n)}</li>`).join("")}</ul></section>
+    ${tab.sections.map(g => `<section class="s"><div class="s-h"><h2>${esc(g.name)}</h2><span class="sub">реальні результати з Python ${DATA.version}</span></div><div class="ops">${g.cells.map(cell).join("")}</div></section>`).join("")}`;
+}
+
+function buildRecipes(tab) {
+  return `
+    <div class="p-head">
+      <div class="p-name small">${esc(tab.label)}</div>
+      <div><p class="p-tag"><b>${esc(tab.title)}.</b> ${md(tab.tagline)}</p></div>
+    </div>
+    ${impHtml(tab.imp)}
+    ${tab.groups.map(g => `<section class="s"><div class="s-h"><h2>${esc(g.name)}</h2></div><div class="ops">${g.cells.map(cell).join("")}</div></section>`).join("")}`;
+}
+
+$("#ver").textContent = `CPython ${DATA.version}`;
+$("#ver2").textContent = DATA.version;
+const TABS = DATA.tabs.map(t => t.key);
+const tablist = $("#tablist"), panels = $("#panels");
+DATA.tabs.forEach((tab, i) => {
+  const b = document.createElement("button");
+  const concept = tab.kind !== "api";
+  b.className = "tab" + (concept ? " concept" : "") + (tab.sep ? " sep" : "");
+  b.id = "tab-" + tab.key; b.setAttribute("role", "tab"); b.setAttribute("aria-controls", "panel-" + tab.key); b.tabIndex = -1;
+  b.textContent = tab.label;
+  b.addEventListener("click", () => select(tab.key, true));
+  tablist.appendChild(b);
+  const p = document.createElement("div");
+  p.className = "panel"; p.id = "panel-" + tab.key; p.setAttribute("role", "tabpanel"); p.setAttribute("aria-labelledby", "tab-" + tab.key); p.hidden = true;
+  p.innerHTML = tab.kind === "table" ? buildTable(tab) : tab.kind === "recipes" ? buildRecipes(tab) : buildApi(tab);
+  const f = $(".filter", p);
+  if (f) f.addEventListener("input", () => {
+    const q = f.value.trim().toLowerCase();
+    const rows = p.querySelectorAll(".m-row");
+    rows.forEach(r => r.hidden = q && !r.dataset.q.includes(q));
+    p.querySelectorAll(".m-group").forEach(g => g.hidden = ![...rows].some(r => r.dataset.g === g.dataset.g && !r.hidden));
+  });
+  panels.appendChild(p);
+});
+tablist.addEventListener("keydown", e => {
+  const i = TABS.indexOf(document.activeElement.id.replace("tab-", ""));
+  if (i < 0) return;
+  let j = null;
+  if (e.key === "ArrowRight") j = (i + 1) % TABS.length;
+  if (e.key === "ArrowLeft") j = (i - 1 + TABS.length) % TABS.length;
+  if (e.key === "Home") j = 0;
+  if (e.key === "End") j = TABS.length - 1;
+  if (j !== null) { e.preventDefault(); select(TABS[j], true); $("#tab-" + TABS[j]).focus(); }
+});
+function select(key, user) {
+  if (!TABS.includes(key)) key = TABS[0];
+  TABS.forEach(k => {
+    const on = k === key;
+    const b = $("#tab-" + k); b.setAttribute("aria-selected", on); b.tabIndex = on ? 0 : -1;
+    $("#panel-" + k).hidden = !on;
+  });
+  if (user) {
+    try { localStorage.setItem("pystr-tab", key); } catch (e) {}
+    try { history.replaceState(null, "", "#" + key); } catch (e) {}
+    const t = $(".tabs");
+    if (t.getBoundingClientRect().top <= 1) window.scrollTo({ top: t.offsetTop, behavior: "instant" });
+    $("#tab-" + key).scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
+}
+let initial = location.hash.slice(1);
+if (!TABS.includes(initial)) { try { initial = localStorage.getItem("pystr-tab") || ""; } catch (e) { initial = ""; } }
+select(TABS.includes(initial) ? initial : TABS[0], false);
+window.addEventListener("hashchange", () => select(location.hash.slice(1), false));
+</script>
+</body>
+</html>
