@@ -16,6 +16,7 @@
 ├── module01/   Типи даних: вбудовані типи, змінність, типізація, пріоритет операторів, колекції, перетворення
 ├── module02/   Керуючі конструкції: if / elif / else, тернарний оператор, цикли for і while, винятки, перші функції
 ├── module03/   Дата, час і випадковість: datetime, timedelta, часові пояси, UTC, time, calendar, random
+├── module04/   Рядки: f-рядки та специфікація формату, старі способи форматування, методи рядків, спецсимволи, regex
 ```
 
 **Домовленості для всіх модулів:**
@@ -23,7 +24,7 @@
 - У кожному модулі є `agenda.md` з планом лекції; слайди, якщо вони є, додані як PDF.
 - Сторінки `.html` самодостатні: відкривайте їх просто з диска в браузері, без сервера та встановлення.
 - Кожен результат на HTML-сторінці отримано реальним запуском прикладу на CPython 3.14.3.
-- Кожен скрипт запускається окремо: `python module01/strings/basics.py`. Скрипти в `module02/if_statements/` і `module02/while_loop/` просять ввести дані.
+- Кожен скрипт запускається окремо: `python module01/strings/basics.py`. Скрипти в `module02/if_statements/` і `module02/while_loop/`, а також `module04/methods/_strip.py` просять ввести дані.
 
 ---
 
@@ -132,6 +133,27 @@
 | **[python-date-random.html](module03/python-date-random.html)** | Інтерактивна шпаргалка: вкладки для `datetime`, `date`, `time`, `timedelta`, часових поясів (`timezone` і `zoneinfo`), UTC, модуля `time`, `calendar`, `random`, усіх кодів `strftime` / `strptime` і готових рецептів |
 | **[formats.md](module03/formats.md)** | Усі коди форматування `strftime` / `strptime`, кожен показаний на одній і тій самій даті |
 
+**Скрипти про дату й час:**
+
+| Скрипт | Що показує |
+| --- | --- |
+| [date/01_dt.py](module03/date/01_dt.py) | Створення `datetime`, розбиття на `date()` і `time()`, `now()` і `today()` |
+| [date/02_dt.py](module03/date/02_dt.py) | Розбір рядка через `strptime`, `replace()`, різниця двох дат — це `timedelta` |
+| [date/03_dt.py](module03/date/03_dt.py) | Додавання `timedelta` до поточного часу |
+| [date/04_dt.py](module03/date/04_dt.py) | `strftime("%B")` / `"%A"` — назва місяця чи дня тижня |
+| [date/05_dt.py](module03/date/05_dt.py) | Усі дні між двома датами через `range` і `timedelta(days=i)` |
+| [date/06_dt.py](module03/date/06_dt.py) | Порядковий номер дня, timestamp, `ctime` та ISO-формат — і відновлення `datetime` з кожного |
+| [date/07_dt.py](module03/date/07_dt.py) | `datetime.combine`, `timedelta.total_seconds()`, рух назад у часі |
+| [date/08_dt.py](module03/date/08_dt.py) | `calendar`: `isleap`, `monthrange`, `weekday`, `monthcalendar` |
+| [date/09_age_and_birthdays.py](module03/date/09_age_and_birthdays.py) | HR / CRM: точний вік і в кого з команди день народження цього тижня (з урахуванням 29 лютого) |
+| [date/10_utc.py](module03/date/10_utc.py) | UTC крок за кроком: naive проти aware, перетворення з місцевого часу й назад, фіксований зсув проти `ZoneInfo` і літній час |
+| [date/11_log_parsing.py](module03/date/11_log_parsing.py) | DevOps: розбір часу з лог-файлу і виведення в ISO та зручному для людини форматі |
+| [date/12_meeting_across_timezones.py](module03/date/12_meeting_across_timezones.py) | Одна зустріч за часом Києва, Стокгольма й Техасу; чому не можна змішувати naive і aware |
+| [date/timezones3.py](module03/date/timezones3.py) | `zoneinfo` (стандартна бібліотека): прив'язка часового поясу, перетворення через `astimezone()`, naive → aware |
+| [date/timezones.py](module03/date/timezones.py), [timezones2.py](module03/date/timezones2.py) | Те саме зі сторонніми пакетами `pytz` і `dateutil` (`pip install pytz python-dateutil`) |
+| [date/calend.py](module03/date/calend.py) | `calendar.calendar(year)` і `calendar.month_name` |
+| [date/deal_time.py](module03/date/deal_time.py) | `time.sleep()` у циклі |
+
 **Скрипти з `random`:**
 
 | Скрипт | Що показує |
@@ -144,3 +166,44 @@
 | [random/06_rd.py](module03/random/06_rd.py) | `random()`, `uniform()` і `seed()` для відтворюваних результатів |
 
 📋 Повний перелік тем: **[module03/agenda.md](module03/agenda.md)**
+
+---
+
+# Модуль 04 — Рядки та регулярні вирази
+
+Як вивести дані саме в потрібному вигляді, методи рядків, які знадобляться щодня, і (у другій частині)
+регулярні вирази для пошуку тексту за його формою.
+
+| Файл | Що це |
+| --- | --- |
+| **[python-strings-regex.html](module04/python-strings-regex.html)** | Інтерактивна шпаргалка: вкладки для f-рядків, `%` і `str.format()`, методів `str`, модуля `re`, повної специфікації формату, спецсимволів і сирих рядків та синтаксису regex |
+| **[formated_string/cheatsheet.md](module04/formated_string/cheatsheet.md)** | Специфікація формату на одній сторінці: вирівнювання й заповнення, числа, системи числення, відсотки, дати |
+
+**Форматування рядків:**
+
+| Скрипт | Що показує |
+| --- | --- |
+| [formated_string/01.py](module04/formated_string/01.py) | Вирівнювання ліворуч, праворуч і по центру у фіксованій ширині |
+| [formated_string/02.py](module04/formated_string/02.py) | Таблиця чисел 0–15 у десятковій, шістнадцятковій і двійковій системах |
+| [formated_string/03.py](module04/formated_string/03.py) | `:.2%` проти ручного обчислення відсотка |
+| [formated_string/04.py](module04/formated_string/04.py) | `f"{x=}"` для налагодження, багаторядкові f-рядки, умова всередині `{}` |
+| [formated_string/05.py](module04/formated_string/05.py) | Числа: розділювач тисяч, точність, експоненційний запис, знак, доповнення нулями, системи числення, відсотки |
+| [formated_string/06.py](module04/formated_string/06.py) | Дати у f-рядках: `f"{d:%d.%m.%Y}"`, чому там не працює вирівнювання, форматування `timedelta` |
+| [formated_string/08.py](module04/formated_string/08.py) | Старі способи: оператор `%` і `str.format()`, шаблони для повторного використання |
+| [formated_string/09.py](module04/formated_string/09.py) | `ljust`, `rjust`, `center`, `zfill` — і зміст книги з крапками |
+| [formated_string/10.py](module04/formated_string/10.py) | Практика: чек з магазину з вирівняними колонками, знижкою й підсумком |
+| [formated_string/special_symbols.py](module04/formated_string/special_symbols.py) | `\n`, `\f`, `\r`, `\t`, `\v` — що кожен робить із виведенням |
+
+**Методи рядків:**
+
+| Скрипт | Що показує |
+| --- | --- |
+| [methods/_case_and_search.py](module04/methods/_case_and_search.py) | Регістр, `startswith` / `endswith`, `count`, `find` проти `index`, `rfind`, доповнення |
+| [methods/_isdigit_isalpha.py](module04/methods/_isdigit_isalpha.py) | `isdigit`, `isalpha`, `isalnum`, `isspace`, `isupper` / `islower`; перевірка введення користувача |
+| [methods/_split.py](module04/methods/_split.py) | `split`: найдовше слово, найдовший ланцюжок голосних |
+| [methods/_join.py](module04/methods/_join.py) | `join` — відсортовані ключі словника одним рядком |
+| [methods/_replace.py](module04/methods/_replace.py) | `replace` у циклі, щоб прибрати повторювані коми |
+| [methods/_strip.py](module04/methods/_strip.py) | `strip` перед порівнянням введення користувача — просить ввести дані |
+| [methods/validate_password.py](module04/methods/validate_password.py) | Практика: перевірка надійності пароля — які правила виконано, а які ні |
+
+📋 Повний перелік тем: **[module04/agenda.md](module04/agenda.md)**
