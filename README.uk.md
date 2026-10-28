@@ -17,6 +17,7 @@
 ├── module02/   Керуючі конструкції: if / elif / else, тернарний оператор, цикли for і while, винятки, перші функції
 ├── module03/   Дата, час і випадковість: datetime, timedelta, часові пояси, UTC, time, calendar, random
 ├── module04/   Рядки: f-рядки та специфікація формату, старі способи форматування, методи рядків, спецсимволи, regex
+├── module05/   Файли: open() і його режими, читання й запис, текстовий і двійковий режими, кодування, seek / tell, with
 ```
 
 **Домовленості для всіх модулів:**
@@ -25,6 +26,7 @@
 - Сторінки `.html` самодостатні: відкривайте їх просто з диска в браузері, без сервера та встановлення.
 - Кожен результат на HTML-сторінці отримано реальним запуском прикладу на CPython 3.14.3.
 - Кожен скрипт запускається окремо: `python module01/strings/basics.py`. Скрипти в `module02/if_statements/` і `module02/while_loop/`, а також `module04/methods/_strip.py` просять ввести дані.
+- Скрипти в `module05/_open/` і `module04/ip_aggregator/straightforward.py` відкривають файли за відносним шляхом — запускайте їх з їхньої папки.
 
 ---
 
@@ -171,13 +173,15 @@
 
 # Модуль 04 — Рядки та регулярні вирази
 
-Як вивести дані саме в потрібному вигляді, методи рядків, які знадобляться щодня, і (у другій частині)
-регулярні вирази для пошуку тексту за його формою.
+Як вивести дані саме в потрібному вигляді, методи рядків, які знадобляться щодня, і регулярні вирази
+для пошуку тексту за його формою.
 
 | Файл | Що це |
 | --- | --- |
 | **[python-strings-regex.html](module04/python-strings-regex.html)** | Інтерактивна шпаргалка: вкладки для f-рядків, `%` і `str.format()`, методів `str`, модуля `re`, повної специфікації формату, спецсимволів і сирих рядків та синтаксису regex |
 | **[formated_string/cheatsheet.md](module04/formated_string/cheatsheet.md)** | Специфікація формату на одній сторінці: вирівнювання й заповнення, числа, системи числення, відсотки, дати |
+| **[reg/cheatsheet.md](module04/reg/cheatsheet.md)** | Regex на одній сторінці: функції `re`, класи й набори символів, якорі, квантифікатори (жадібні й ліниві), групи, альтернатива, lookahead / lookbehind, прапорці, `re.sub` з функцією |
+| **[methods/moderate_visualizer.html](module04/methods/moderate_visualizer.html)** | Модератор контенту крок за кроком: як `find` у копії в нижньому регістрі знаходить заборонені слова і чому перевірка меж слова не чіпає `class` |
 
 **Форматування рядків:**
 
@@ -205,5 +209,55 @@
 | [methods/_replace.py](module04/methods/_replace.py) | `replace` у циклі, щоб прибрати повторювані коми |
 | [methods/_strip.py](module04/methods/_strip.py) | `strip` перед порівнянням введення користувача — просить ввести дані |
 | [methods/validate_password.py](module04/methods/validate_password.py) | Практика: перевірка надійності пароля — які правила виконано, а які ні |
+| [methods/slugify.py](module04/methods/slugify.py) | Практика: перетворити заголовок статті на URL-slug за допомогою `strip`, `lower`, `split` і `join` |
+| [methods/moderate.py](module04/methods/moderate.py) | Практика: замінити заборонені слова на `*` — без урахування регістру, лише цілі слова, решта тексту без змін |
+
+**Регулярні вирази:**
+
+| Скрипт | Що показує |
+| --- | --- |
+| [reg/match_vs_search2.py](module04/reg/match_vs_search2.py) | `re.match` (лише початок рядка) проти `re.search` (будь-де) на рядках логів і URL |
+| [reg/anchors.py](module04/reg/anchors.py) | `^` і `$`: починається з, закінчується на, перевірка всього рядка на формат `YYYY-MM-DD` |
+| [reg/_split.py](module04/reg/_split.py) | `re.split`: послідовності пробілів, кілька роздільників одразу, `maxsplit`, збереження роздільника через групу |
+| [reg/split_recipients.py](module04/reg/split_recipients.py) | Практика: поле «Кому:» листа — розбити за будь-яким роздільником, прибрати порожні рядки й дублікати, позначити некоректні адреси |
+| [reg/card_mask.py](module04/reg/card_mask.py) | Маскування номерів карток через `re.sub` і зворотне посилання; `group()`, `groups()`, `finditer`, іменовані групи |
+| [reg/phone_normalize.py](module04/reg/phone_normalize.py) | Телефонні номери в будь-якому форматі — до одного: `\D`, щоб прибрати все, крім цифр |
+| [reg/password_validate.py](module04/reg/password_validate.py) | Знову перевірка пароля, по одному regex на правило |
+| [reg/slugify.py](module04/reg/slugify.py) | Знову генератор slug — одним `re.sub` |
+| [reg/moderate.py](module04/reg/moderate.py) | Знову модератор: межі слова `\b`, `re.IGNORECASE`, `re.sub` з функцією |
+| [reg/emails.py](module04/reg/emails.py) | `findall` для email-адрес і група, щоб витягти лише домен |
+| [reg/find_urls.py](module04/reg/find_urls.py) | `https?://` — пошук посилань у тексті |
+| [reg/hashtags_mentions.py](module04/reg/hashtags_mentions.py) | `#хештеги` і `@згадки` з підпису до допису |
+| [reg/price_extract.py](module04/reg/price_extract.py) | Екранування `$` і `.`, щоб витягти ціни з опису |
+| [reg/parse_ips.py](module04/reg/parse_ips.py) | `re.compile` і `findall` для IPv4-адрес |
+| [reg/commatose.py](module04/reg/commatose.py) | `,+` — прибрати повторювані коми одним `sub` (порівняйте з `methods/_replace.py`) |
+| [reg/find_max_vowels.py](module04/reg/find_max_vowels.py) | Найдовший ланцюжок голосних одним рядком (порівняйте з `methods/_split.py`) |
+
+**Практика: аналіз логів** — [ip_aggregator/logs.txt](module04/ip_aggregator/logs.txt) — приклад логу Django:
+
+| Скрипт | Що показує |
+| --- | --- |
+| [ip_aggregator/straightforward.py](module04/ip_aggregator/straightforward.py) | Перша спроба: знайти IP у кожному рядку й порахувати запити з кожної адреси |
+| [ip_aggregator/log_analyser.py](module04/ip_aggregator/log_analyser.py) | Шаблон з коментарями та іменованими групами: кількість записів кожного рівня з діаграмою і топ IP за кількістю помилок |
 
 📋 Повний перелік тем: **[module04/agenda.md](module04/agenda.md)**
+
+---
+
+# Модуль 05 — Робота з файлами
+
+Читання й запис файлів: `open()` і його режими, читання всього файлу або рядок за рядком, текстовий і
+двійковий режими, кодування, переміщення у файлі за допомогою `seek` / `tell` і чому `with` закриває файл
+за вас.
+
+| Скрипт | Що показує |
+| --- | --- |
+| [_open/ex_01.py](module05/_open/ex_01.py) | Усі режими `open()` — `r`, `w`, `x`, `a`, `b`, `t`, `+` — в одній таблиці |
+| [_open/ex_02.py](module05/_open/ex_02.py) | Дописування у файл через `"a"`, потім `close()` (спробуйте `"x"`, щоб побачити помилку на наявному файлі) |
+| [_open/ex_03.py](module05/_open/ex_03.py) | Читання перших N рядків через `readline()` і перехоплення `OSError` |
+| [_open/ex_04.py](module05/_open/ex_04.py) | `write` проти `writelines` всередині `with` — і помилка, коли папки не існує |
+| [_open/ex_05.py](module05/_open/ex_05.py) | Той самий текст у кодуваннях UTF-8, UTF-16 і cp1251, записаний і прочитаний у двійковому режимі |
+| [_open/ex_06.py](module05/_open/ex_06.py) | Відкриття зображення в режимі `"rb"` — як виглядає двійковий файл у байтах |
+| [_open/ex_07.py](module05/_open/ex_07.py) | `read(n)`, `tell()` і `seek(0)` — повторне читання тієї самої частини файлу |
+
+📋 Повний перелік тем: **[module05/agenda.md](module05/agenda.md)**
