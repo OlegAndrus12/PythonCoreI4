@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Content Moderator Visualizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Onest:wght@600;800&display=swap">
+<style>
+/* Layout: header; control bar with presets; character tape (index / result / lower) with search window + boundary checks; code with current line + variables + log side by side; match history below. */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --ink: #141a24;
+  --muted: #5a6476;
+  --line: #dbe0e8;
+  --accent: #2354c7;
+  --accent-soft: #e6edfb;
+  --ok: #1f7a4d;
+  --ok-soft: #e1f3e9;
+  --err: #b4322b;
+  --err-soft: #fbeceb;
+  --src: #7a5300;
+  --src-soft: #fbefc9;
+  --cell: #f6f7f9;
+  --font-display: "Onest", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1218; --surface: #151b24; --ink: #e5e9f0; --muted: #98a2b4; --line: #283141;
+    --accent: #86a8ff; --accent-soft: #1b2740;
+    --ok: #6fd3a0; --ok-soft: #12322d; --err: #ff8a80; --err-soft: #3a1d1d;
+    --src: #f4d27a; --src-soft: #3a2f12; --cell: #181d25;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1218; --surface: #151b24; --ink: #e5e9f0; --muted: #98a2b4; --line: #283141;
+  --accent: #86a8ff; --accent-soft: #1b2740;
+  --ok: #6fd3a0; --ok-soft: #12322d; --err: #ff8a80; --err-soft: #3a1d1d;
+  --src: #f4d27a; --src-soft: #3a2f12; --cell: #181d25;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-inline: 16px; padding-block: 0 64px;
+  font-variant-ligatures: none;
+}
+.wrap { max-width: 1180px; margin: 0 auto; }
+code, .mono { font-family: var(--font-mono); font-size: 0.92em; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+/* header */
+.top { padding-block: 32px 18px; display: flex; flex-wrap: wrap; gap: 12px 32px; align-items: end; justify-content: space-between; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(28px, 4.4vw, 42px); line-height: 1.05; margin: 6px 0 8px; letter-spacing: -0.01em; }
+.lede { margin: 0; color: var(--muted); max-width: 66ch; }
+.formulas { display: grid; gap: 6px; font-family: var(--font-mono); font-size: 14px; }
+.formulas div { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 12px; }
+.formulas b { color: var(--accent); font-weight: 700; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; min-width: 0; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 15px; margin: 0 0 10px; color: var(--muted); letter-spacing: 0.02em; }
+
+/* controls */
+.controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: end; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field label, .field .lbl { font-size: 12px; color: var(--muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.05em; }
+input[type=text] {
+  font: 500 15px var(--font-mono); color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 7px 10px; width: 100%;
+}
+#post { width: min(420px, 100%); }
+#banned { width: min(260px, 100%); }
+.grow { flex: 1 1 320px; }
+button {
+  font: 600 14px var(--font-body); color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 14px; cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button:disabled { opacity: .45; cursor: default; border-color: var(--line); }
+button.primary { background: var(--accent); color: var(--surface); border-color: var(--accent); min-width: 96px; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.speed { display: flex; align-items: center; gap: 8px; }
+.speed output { font-family: var(--font-mono); font-size: 13px; width: 3.5ch; }
+.presets { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.presets .lbl { font-size: 12px; color: var(--muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.05em; margin-right: 4px; }
+.presets button { font: 500 13px var(--font-mono); padding: 4px 10px; }
+.hint { margin-top: 10px; font-size: 13px; color: var(--muted); }
+kbd { font-family: var(--font-mono); font-size: 12px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--bg); }
+
+/* scrubber */
+.scrub { margin-top: 14px; display: flex; gap: 12px; align-items: center; }
+.scrub input { flex: 1; accent-color: var(--accent); }
+.scrub output { font-family: var(--font-mono); font-size: 13px; color: var(--muted); white-space: nowrap; }
+
+/* tape */
+.tape-scroll { margin-top: 16px; overflow-x: auto; padding-bottom: 4px; }
+table.tape { border-collapse: separate; border-spacing: 3px; font-family: var(--font-mono); }
+table.tape th {
+  position: sticky; left: 0; z-index: 1; background: var(--surface);
+  font-size: 11px; font-weight: 500; color: var(--muted); text-align: right; padding-right: 8px;
+  text-transform: uppercase; letter-spacing: .05em; white-space: nowrap;
+}
+table.tape td {
+  width: 26px; min-width: 26px; height: 32px; text-align: center; font-size: 16px; font-weight: 700;
+  background: var(--cell); border: 1px solid var(--line); border-radius: 4px;
+  transition: background .2s, border-color .2s, color .2s;
+}
+table.tape tr.idx td { height: 18px; font-size: 10px; font-weight: 500; color: var(--muted); background: none; border-color: transparent; }
+table.tape tr.idx td.start { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+table.tape tr.idx td.at { color: var(--src); background: var(--src-soft); border-color: var(--src); }
+table.tape td.space { border-style: dashed; color: var(--muted); font-weight: 400; }
+table.tape td.skipped { opacity: .4; }
+table.tape td.win { background: var(--src-soft); border-color: var(--src); color: var(--src); }
+table.tape td.b-ok { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); border-width: 2px; }
+table.tape td.b-bad { background: var(--err-soft); border-color: var(--err); color: var(--err); border-width: 2px; }
+table.tape td.masked { color: var(--accent); }
+table.tape td.fresh { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+.legend { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--line); background: var(--cell); }
+.legend i.win { background: var(--src-soft); border-color: var(--src); }
+.legend i.b-ok { background: var(--ok-soft); border-color: var(--ok); }
+.legend i.b-bad { background: var(--err-soft); border-color: var(--err); }
+.legend i.start { background: var(--accent-soft); border-color: var(--accent); }
+.legend i.skipped { opacity: .4; }
+
+/* stage */
+.stage { margin-top: 16px; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+
+/* code */
+.code-scroll { overflow-x: auto; }
+ol.code { margin: 0; padding: 0; list-style: none; font-family: var(--font-mono); font-size: 13px; line-height: 1.5; counter-reset: ln; }
+ol.code li { counter-increment: ln; white-space: pre; padding: 1px 10px 1px 0; border-left: 3px solid transparent; border-radius: 0 4px 4px 0; }
+ol.code li::before { content: counter(ln); display: inline-block; width: 3ch; margin-right: 12px; text-align: right; color: var(--muted); opacity: .6; }
+ol.code li.cur { background: var(--accent-soft); border-left-color: var(--accent); }
+ol.code .k { color: var(--accent); font-weight: 700; }
+ol.code .s { color: var(--ok); }
+ol.code .c { color: var(--muted); }
+
+/* variables */
+table.vars { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 13px; }
+table.vars td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.vars td:first-child { color: var(--muted); width: 1%; white-space: nowrap; }
+table.vars td.val { word-break: break-all; }
+table.vars tr.changed td.val { background: var(--src-soft); color: var(--src); font-weight: 700; }
+table.vars .t { color: var(--ok); font-weight: 700; }
+table.vars .f { color: var(--err); font-weight: 700; }
+
+/* log */
+.now { margin-top: 16px; }
+.phase { display: inline-block; font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); background: var(--accent-soft); padding: 2px 8px; border-radius: 99px; margin-bottom: 8px; }
+.msg { font-family: var(--font-mono); font-size: 14px; padding: 8px 10px; border-left: 3px solid var(--accent); background: var(--bg); border-radius: 0 var(--radius) var(--radius) 0; }
+.msg.good { border-left-color: var(--ok); }
+.msg.bad { border-left-color: var(--err); }
+.msg b { font-weight: 700; }
+.msg .m { color: var(--muted); }
+
+/* history */
+.history { margin-top: 16px; }
+.history-scroll { overflow-x: auto; }
+.history table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 13px; }
+.history th { text-align: left; font-weight: 500; color: var(--muted); border-bottom: 1px solid var(--line); padding: 4px 6px; white-space: nowrap; }
+.history td { padding: 4px 6px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.history td.yes { color: var(--ok); font-weight: 700; }
+.history td.no { color: var(--err); font-weight: 700; }
+.history .empty { color: var(--muted); }
+.final { margin-top: 12px; font-family: var(--font-mono); font-size: 14px; display: grid; gap: 4px; }
+.final b { color: var(--ok); }
+
+@media (prefers-reduced-motion: reduce) { table.tape td { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Module 04 · String methods · Practice 07</div>
+      <h1>Content moderator</h1>
+      <p class="lede">The function keeps two strings in sync. <code>lower</code> is a lowercased copy used only for searching. <code>result</code> keeps the original casing and receives the asterisks. A match is masked only when the characters on both sides are not letters. That is why <code>"class"</code> survives a ban on <code>"ass"</code>.</p>
+    </div>
+    <div class="formulas">
+      <div>search: <b>lower.find(word, start)</b></div>
+      <div>left edge: <b>idx == 0 or not lower[idx-1].isalpha()</b></div>
+      <div>right edge: <b>end == len or not lower[end].isalpha()</b></div>
+    </div>
+  </header>
+
+  <section class="card">
+    <div class="controls">
+      <div class="field grow">
+        <label for="post">Post</label>
+        <input id="post" type="text" value="Pass the class, you smart-ass!" maxlength="80" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="banned">Banned (comma-separated)</label>
+        <input id="banned" type="text" value="damn, shit, hell, crap, ass" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="speed">Speed</label>
+        <div class="speed"><input id="speed" type="range" min="0.25" max="4" step="0.25" value="1"><output id="speedOut">1×</output></div>
+      </div>
+      <div class="btns">
+        <button id="play" class="primary">▶ Play</button>
+        <button id="back" title="Previous step">⏮ Back</button>
+        <button id="step" title="Next step">Step ⏭</button>
+        <button id="reset">Reset</button>
+      </div>
+    </div>
+    <div class="presets" id="presets"><span class="lbl">Try</span></div>
+    <div class="hint"><kbd>Space</kbd> play / pause · <kbd>←</kbd> <kbd>→</kbd> step · <kbd>R</kbd> reset</div>
+
+    <div class="scrub">
+      <input id="scrub" type="range" min="0" max="0" value="0" aria-label="Step">
+      <output id="stepOut">0 / 0</output>
+    </div>
+
+    <div class="tape-scroll" id="tapeScroll"><table class="tape" id="tape"></table></div>
+    <div class="legend">
+      <span><i class="start"></i>start (search begins here)</span>
+      <span><i class="skipped"></i>before start: not searched</span>
+      <span><i class="win"></i>found <code>word</code></span>
+      <span><i class="b-ok"></i>edge OK (not a letter)</span>
+      <span><i class="b-bad"></i>edge is a letter → part of a longer word</span>
+    </div>
+  </section>
+
+  <div class="stage">
+    <section class="card">
+      <h2>moderate(post, banned)</h2>
+      <div class="code-scroll"><ol class="code" id="code"></ol></div>
+      <div class="now">
+        <span class="phase" id="phase">ready</span>
+        <div class="msg" id="msg">Press Play, or Step to go one line at a time.</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Variables</h2>
+      <table class="vars"><tbody id="vars"></tbody></table>
+
+      <div class="history">
+        <h2>Matches checked</h2>
+        <div class="history-scroll">
+          <table>
+            <thead><tr><th>word</th><th>idx</th><th>left</th><th>right</th><th>action</th></tr></thead>
+            <tbody id="hist"></tbody>
+          </table>
+        </div>
+        <div class="final" id="final"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const isAlpha = ch => ch !== undefined && /\p{L}/u.test(ch);
+const repr = s => "'" + s.replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "'";
+
+const PRESETS = [
+  "Pass the class, you smart-ass!",
+  "This is a damn good photo, holy shit!",
+  "What the hell is going on?!",
+  "Hellish? No, just HELL.",
+  "[DAMN] this view is unreal!!",
+  "Great day, no bad words here.",
+];
+
+// ---------- code panel ----------
+const CODE = [
+  `result = post`,
+  `lower = result.lower()`,
+  `for word in banned:`,
+  `    mask = "*" * len(word)`,
+  `    start = 0`,
+  `    while True:`,
+  `        idx = lower.find(word, start)`,
+  `        if idx == -1:`,
+  `            break`,
+  `        before_ok = idx == 0 or not lower[idx - 1].isalpha()`,
+  `        after_ok = idx + len(word) == len(lower) or not lower[idx + len(word)].isalpha()`,
+  `        if before_ok and after_ok:`,
+  `            result = result[:idx] + mask + result[idx + len(word):]`,
+  `            lower = lower[:idx] + mask + lower[idx + len(word):]`,
+  `        start = idx + len(word)`,
+  `return result`,
+];
+function highlight(line) {
+  return esc(line)
+    .replace(/(&quot;.*?&quot;)/g, `<span class="s">$1</span>`)
+    .replace(/\b(for|in|while|True|if|break|or|not|and|return)\b/g, `<span class="k">$1</span>`);
+}
+$("code").innerHTML = CODE.map(l => `<li>${highlight(l)}</li>`).join("");
+
+// ---------- trace: run the algorithm once, record every step ----------
+function find(arr, word, start) {
+  outer: for (let i = Math.max(0, start); i + word.length <= arr.length; i++) {
+    for (let k = 0; k < word.length; k++) if (arr[i + k] !== word[k]) continue outer;
+    return i;
+  }
+  return -1;
+}
+
+function buildTrace(post, banned) {
+  const steps = [];
+  const hist = [];
+  let result = Array.from(post);
+  let lower = Array.from(post.toLowerCase());
+  let vars = { word: null, mask: null, start: null, idx: null, before_ok: null, after_ok: null };
+  const masked = new Set();
+
+  const push = (line, phase, msg, marks = {}, tone = "") => {
+    steps.push({ line, phase, msg, tone, marks, result: [...result], lower: [...lower], masked: new Set(masked), vars: { ...vars }, histLen: hist.length });
+  };
+
+  push(1, "setup", `result = ${esc(repr(post))}  <span class="m">(original casing, gets the asterisks)</span>`);
+  push(2, "setup", `lower = result.lower() → ${esc(repr(lower.join("")))}  <span class="m">(only used for searching)</span>`);
+
+  if (lower.length !== result.length) {
+    push(2, "warning", `len(lower) = ${lower.length} but len(result) = ${result.length}. Some character lowercases into several, so the indexes no longer line up.`, {}, "bad");
+  }
+
+  for (const w of banned) {
+    const word = Array.from(w);
+    vars = { word: repr(w), mask: null, start: null, idx: null, before_ok: null, after_ok: null };
+    push(3, `word ${esc(repr(w))}`, `Next banned word: <b>${esc(repr(w))}</b>`);
+    vars.mask = repr("*".repeat(word.length));
+    push(4, `word ${esc(repr(w))}`, `mask = "*" * ${word.length} → ${esc(vars.mask)}`);
+    let start = 0;
+    vars.start = 0;
+    push(5, `word ${esc(repr(w))}`, `start = 0  <span class="m">(search from the beginning)</span>`, { start });
+
+    while (true) {
+      const idx = find(lower, word, start);
+      vars.idx = idx; vars.before_ok = null; vars.after_ok = null;
+      if (idx === -1) {
+        push(7, "search", `lower.find(${esc(repr(w))}, ${start}) → <b>-1</b>  <span class="m">(no more occurrences)</span>`, { start }, "bad");
+        push(8, "search", `idx == -1 → True`, { start });
+        push(9, "search", `break → done with ${esc(repr(w))}`, { start });
+        break;
+      }
+      const end = idx + word.length;
+      const win = { start, idx, len: word.length };
+      push(7, "search", `lower.find(${esc(repr(w))}, ${start}) → <b>${idx}</b>`, win);
+      push(8, "search", `idx == -1 → False, so check the edges`, win);
+
+      const beforeOk = idx === 0 || !isAlpha(lower[idx - 1]);
+      vars.before_ok = beforeOk;
+      const leftMsg = idx === 0
+        ? `idx == 0 → match is at the very start → <b>True</b>`
+        : `lower[${idx - 1}] = ${esc(repr(lower[idx - 1]))}, .isalpha() is ${isAlpha(lower[idx - 1]) ? "True" : "False"} → before_ok = <b>${beforeOk ? "True" : "False"}</b>`;
+      const b = { i: idx - 1, ok: beforeOk };
+      push(10, "left edge", leftMsg, { ...win, b }, beforeOk ? "good" : "bad");
+
+      const afterOk = end === lower.length || !isAlpha(lower[end]);
+      vars.after_ok = afterOk;
+      const rightMsg = end === lower.length
+        ? `idx + len(word) == len(lower) == ${end} → match ends the string → <b>True</b>`
+        : `lower[${end}] = ${esc(repr(lower[end]))}, .isalpha() is ${isAlpha(lower[end]) ? "True" : "False"} → after_ok = <b>${afterOk ? "True" : "False"}</b>`;
+      const a = { i: end, ok: afterOk };
+      push(11, "right edge", rightMsg, { ...win, b, a }, afterOk ? "good" : "bad");
+
+      if (beforeOk && afterOk) {
+        push(12, "decide", `${beforeOk ? "True" : "False"} and ${afterOk ? "True" : "False"} → <b>True</b>, it is a whole word: mask it`, { ...win, b, a }, "good");
+        const original = result.slice(idx, end).join("");
+        result.splice(idx, word.length, ...Array(word.length).fill("*"));
+        for (let k = idx; k < end; k++) masked.add(k);
+        push(13, "mask", `result: ${esc(repr(original))} at ${idx}..${end - 1} → ${esc(vars.mask)}  <span class="m">(casing elsewhere untouched)</span>`, { start, idx, len: word.length, fresh: "result" }, "good");
+        lower.splice(idx, word.length, ...Array(word.length).fill("*"));
+        hist.push({ word: w, idx, left: beforeOk, right: afterOk, action: "masked" });
+        push(14, "mask", `lower gets the same mask, so both strings keep the same indexes`, { start, idx, len: word.length, fresh: "both" }, "good");
+      } else {
+        hist.push({ word: w, idx, left: beforeOk, right: afterOk, action: "kept" });
+        const who = !beforeOk && !afterOk ? "both edges are letters" : !beforeOk ? "left edge is a letter" : "right edge is a letter";
+        push(12, "decide", `${beforeOk ? "True" : "False"} and ${afterOk ? "True" : "False"} → <b>False</b>: ${who}, it's part of a longer word, keep it`, { ...win, b, a }, "bad");
+      }
+      start = end;
+      vars.start = start;
+      push(15, "search", `start = ${idx} + ${word.length} = <b>${start}</b>  <span class="m">(continue after this match)</span>`, { start });
+    }
+  }
+  vars = { word: vars.word, mask: vars.mask, start: vars.start, idx: vars.idx, before_ok: vars.before_ok, after_ok: vars.after_ok };
+  push(16, "done", `return ${esc(repr(result.join("")))}`, { done: true }, "good");
+  return { steps, hist, post };
+}
+
+// ---------- rendering ----------
+let trace = null, cur = 0, timer = null, speedVal = 1;
+const VAR_NAMES = ["word", "mask", "start", "idx", "before_ok", "after_ok"];
+
+function cellChar(ch) { return ch === " " ? "␣" : esc(ch); }
+function fmtVar(v) {
+  if (v === null) return `<span class="m">—</span>`;
+  if (v === true) return `<span class="t">True</span>`;
+  if (v === false) return `<span class="f">False</span>`;
+  return esc(v);
+}
+
+function render() {
+  const s = trace.steps[cur];
+  const prev = trace.steps[cur - 1];
+  const m = s.marks;
+  const n = Math.max(s.result.length, s.lower.length);
+
+  // tape
+  const cls = (row, i) => {
+    const c = [];
+    const ch = (row === "result" ? s.result : s.lower)[i];
+    if (ch === " ") c.push("space");
+    if (s.masked.has(i)) c.push("masked");
+    if (m.start != null && i < m.start && !m.done) c.push("skipped");
+    const inWin = m.idx != null && m.idx >= 0 && i >= m.idx && i < m.idx + m.len;
+    if (inWin && m.fresh && (m.fresh === "both" || m.fresh === row)) c.push("fresh");
+    else if (inWin && !m.fresh) c.push("win");
+    if (row === "lower" && m.b && m.b.i === i) c.push(m.b.ok ? "b-ok" : "b-bad");
+    if (row === "lower" && m.a && m.a.i === i) c.push(m.a.ok ? "b-ok" : "b-bad");
+    return c.join(" ");
+  };
+  let idxRow = `<tr class="idx"><th>index</th>`;
+  let resRow = `<tr><th>result</th>`;
+  let lowRow = `<tr><th>lower</th>`;
+  for (let i = 0; i < n; i++) {
+    const ic = [];
+    if (m.start != null && i === m.start && !m.done) ic.push("start");
+    if (m.idx != null && i === m.idx) ic.push("at");
+    idxRow += `<td class="${ic.join(" ")}">${i}</td>`;
+    resRow += `<td class="${cls("result", i)}">${cellChar(s.result[i] ?? "")}</td>`;
+    lowRow += `<td class="${cls("lower", i)}">${cellChar(s.lower[i] ?? "")}</td>`;
+  }
+  $("tape").innerHTML = idxRow + "</tr>" + resRow + "</tr>" + lowRow + "</tr>";
+
+  // keep the action in view
+  const focus = m.idx != null && m.idx >= 0 ? m.idx : m.start;
+  if (focus != null) {
+    const td = $("tape").rows[0].cells[focus + 1];
+    const box = $("tapeScroll");
+    if (td && (td.offsetLeft < box.scrollLeft + 60 || td.offsetLeft > box.scrollLeft + box.clientWidth - 80)) {
+      box.scrollLeft = td.offsetLeft - box.clientWidth / 2;
+    }
+  }
+
+  // code + message
+  [...$("code").children].forEach((li, i) => li.classList.toggle("cur", i === s.line - 1));
+  $("phase").innerHTML = s.phase;
+  $("msg").innerHTML = s.msg;
+  $("msg").className = "msg" + (s.tone ? " " + s.tone : "");
+
+  // variables
+  $("vars").innerHTML = VAR_NAMES.map(k => {
+    const changed = prev && prev.vars[k] !== s.vars[k] && s.vars[k] !== null;
+    return `<tr class="${changed ? "changed" : ""}"><td>${k}</td><td class="val">${fmtVar(s.vars[k])}</td></tr>`;
+  }).join("");
+
+  // history
+  const rows = trace.hist.slice(0, s.histLen);
+  $("hist").innerHTML = rows.length
+    ? rows.map(h => `<tr><td>${esc(repr(h.word))}</td><td>${h.idx}</td>
+        <td class="${h.left ? "yes" : "no"}">${h.left ? "ok" : "letter"}</td>
+        <td class="${h.right ? "yes" : "no"}">${h.right ? "ok" : "letter"}</td>
+        <td class="${h.action === "masked" ? "yes" : "no"}">${h.action}</td></tr>`).join("")
+    : `<tr><td colspan="5" class="empty">No matches found yet.</td></tr>`;
+
+  $("final").innerHTML = m.done
+    ? `<div>post   : ${esc(repr(trace.post))}</div><div>result : <b>${esc(repr(s.result.join("")))}</b></div>`
+    : "";
+
+  // controls
+  $("scrub").max = trace.steps.length - 1;
+  $("scrub").value = cur;
+  $("stepOut").textContent = `${cur + 1} / ${trace.steps.length}`;
+  $("back").disabled = cur === 0;
+  $("step").disabled = cur === trace.steps.length - 1;
+  syncPlay();
+}
+
+// ---------- playback ----------
+const atEnd = () => cur >= trace.steps.length - 1;
+function syncPlay() {
+  $("play").textContent = timer ? "⏸ Pause" : (atEnd() ? "↻ Replay" : "▶ Play");
+}
+function stop() { clearTimeout(timer); timer = null; syncPlay(); }
+function tick() {
+  if (atEnd()) { stop(); return; }
+  cur++; render();
+  const s = trace.steps[cur];
+  const base = s.line === 3 || s.line === 12 || s.line === 13 || s.line === 16 ? 1500 : 950;
+  timer = setTimeout(tick, base / speedVal);
+  syncPlay();
+}
+function play() {
+  if (timer) { stop(); return; }
+  if (atEnd()) { cur = 0; render(); }
+  timer = setTimeout(tick, 400 / speedVal);
+  syncPlay();
+}
+function go(i) { stop(); cur = Math.max(0, Math.min(trace.steps.length - 1, i)); render(); }
+
+function parseBanned() {
+  return $("banned").value.split(",").map(w => w.trim().toLowerCase()).filter(Boolean);
+}
+function reset() {
+  clearTimeout(timer); timer = null;
+  trace = buildTrace($("post").value, parseBanned());
+  cur = 0;
+  render();
+}
+
+for (const p of PRESETS) {
+  const b = document.createElement("button");
+  b.textContent = p;
+  b.onclick = () => { $("post").value = p; reset(); };
+  $("presets").appendChild(b);
+}
+
+$("play").onclick = play;
+$("step").onclick = () => go(cur + 1);
+$("back").onclick = () => go(cur - 1);
+$("reset").onclick = reset;
+$("scrub").addEventListener("input", e => go(+e.target.value));
+$("post").addEventListener("input", reset);
+$("banned").addEventListener("input", reset);
+$("speed").addEventListener("input", e => { speedVal = +e.target.value; $("speedOut").textContent = speedVal + "×"; });
+document.addEventListener("keydown", e => {
+  if (e.target.matches("input[type=text], textarea")) return;
+  if (e.key === " ") { e.preventDefault(); play(); }
+  else if (e.key === "ArrowRight") { e.preventDefault(); go(cur + 1); }
+  else if (e.key === "ArrowLeft") { e.preventDefault(); go(cur - 1); }
+  else if (e.key === "r" || e.key === "R") reset();
+});
+
+reset();
+</script>
+</body>
+</html>
