@@ -17,6 +17,7 @@ Modules are added as lectures happen; the complete previous iteration is [Python
 ├── module02/   Control flow: if / elif / else, the ternary operator, for and while loops, exceptions, first functions
 ├── module03/   Dates, times and randomness: datetime, timedelta, time zones, UTC, time, calendar, random
 ├── module04/   Strings: f-strings and format specs, older formatting styles, string methods, special characters, regex
+├── module05/   Files: open() and its modes, reading and writing, text vs binary, encodings, seek / tell, with
 ```
 
 **Conventions used throughout:**
@@ -25,6 +26,7 @@ Modules are added as lectures happen; the complete previous iteration is [Python
 - The `.html` pages are self-contained: open them straight from disk in a browser, no server or install needed.
 - Every result shown in an HTML page comes from actually running that example on CPython 3.14.3.
 - Every script runs on its own: `python module01/strings/basics.py`. Scripts in `module02/if_statements/` and `module02/while_loop/`, and `module04/methods/_strip.py`, ask for input.
+- Scripts in `module05/_open/` and `module04/ip_aggregator/straightforward.py` open files by relative path — run them from their own folder.
 
 ---
 
@@ -171,13 +173,15 @@ time zones — plus the `random` module.
 
 # Module 04 — Strings and regular expressions
 
-Formatting output exactly the way you want it, the string methods you'll use every day, and (coming in
-part 2) regular expressions for finding text by its shape.
+Formatting output exactly the way you want it, the string methods you'll use every day, and regular
+expressions for finding text by its shape.
 
 | File                                                                    | What it is                                                                                                                                                       |
 | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **[python-strings-regex.html](module04/python-strings-regex.html)**     | Interactive cheat sheet: tabs for f-strings, `%` and `str.format()`, `str` methods, the `re` module, the full format spec, escape sequences and raw strings, and regex syntax |
 | **[formated_string/cheatsheet.md](module04/formated_string/cheatsheet.md)** | The format spec in one page: alignment and fill, numbers, bases, percentages, dates                                                                          |
+| **[reg/cheatsheet.md](module04/reg/cheatsheet.md)**                     | Regex in one page: `re` functions, character classes and sets, anchors, quantifiers (greedy vs lazy), groups, alternation, lookarounds, flags, `re.sub` with a function |
+| **[methods/moderate_visualizer.html](module04/methods/moderate_visualizer.html)** | Content moderator, step by step: how `find` on a lowercased copy locates banned words and why whole-word checks leave `class` alone |
 
 **String formatting:**
 
@@ -205,5 +209,54 @@ part 2) regular expressions for finding text by its shape.
 | [methods/_replace.py](module04/methods/_replace.py)                         | `replace` in a loop to collapse repeated commas                                                  |
 | [methods/_strip.py](module04/methods/_strip.py)                             | `strip` before comparing user input — asks for input                                             |
 | [methods/validate_password.py](module04/methods/validate_password.py)       | Practice: a password strength checker that reports which rules pass and which fail               |
+| [methods/slugify.py](module04/methods/slugify.py)                           | Practice: turn an article title into a URL slug with `strip`, `lower`, `split` and `join`        |
+| [methods/moderate.py](module04/methods/moderate.py)                         | Practice: mask banned words with `*` — case-insensitive, whole words only, original casing kept  |
+
+**Regular expressions:**
+
+| Script                                                                    | What it shows                                                                                              |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| [reg/match_vs_search2.py](module04/reg/match_vs_search2.py)               | `re.match` (start of string only) vs `re.search` (anywhere) on log lines and URLs                          |
+| [reg/anchors.py](module04/reg/anchors.py)                                 | `^` and `$`: starts with, ends with, and validating a whole `YYYY-MM-DD` date                              |
+| [reg/_split.py](module04/reg/_split.py)                                   | `re.split`: whitespace runs, several delimiters at once, `maxsplit`, keeping the delimiter with a group     |
+| [reg/split_recipients.py](module04/reg/split_recipients.py)               | Practice: an email “To:” field — split on any separator, drop empty strings and duplicates, flag bad addresses |
+| [reg/card_mask.py](module04/reg/card_mask.py)                             | Masking card numbers with `re.sub` and a backreference; `group()`, `groups()`, `finditer`, named groups    |
+| [reg/phone_normalize.py](module04/reg/phone_normalize.py)                 | Bringing phone numbers in any format to one: `\D` to strip non-digits                                      |
+| [reg/password_validate.py](module04/reg/password_validate.py)             | The password checker again, one regex per rule                                                             |
+| [reg/slugify.py](module04/reg/slugify.py)                                 | The slug generator again, in one `re.sub`                                                                  |
+| [reg/moderate.py](module04/reg/moderate.py)                               | The moderator again: `\b` word boundaries, `re.IGNORECASE`, `re.sub` with a function                       |
+| [reg/emails.py](module04/reg/emails.py)                                   | `findall` for email addresses, and a group to pull out just the domain                                     |
+| [reg/find_urls.py](module04/reg/find_urls.py)                             | `https?://` — finding links in text                                                                        |
+| [reg/hashtags_mentions.py](module04/reg/hashtags_mentions.py)             | `#hashtags` and `@mentions` from a post caption                                                           |
+| [reg/price_extract.py](module04/reg/price_extract.py)                     | Escaping `$` and `.` to pull prices out of a description                                                   |
+| [reg/parse_ips.py](module04/reg/parse_ips.py)                             | `re.compile` and `findall` for IPv4 addresses                                                              |
+| [reg/commatose.py](module04/reg/commatose.py)                             | `,+` — collapse repeated commas in one `sub` (compare with `methods/_replace.py`)                          |
+| [reg/find_max_vowels.py](module04/reg/find_max_vowels.py)                 | The longest chain of vowels in one line (compare with `methods/_split.py`)                                 |
+
+**Practice: log analysis** — [ip_aggregator/logs.txt](module04/ip_aggregator/logs.txt) is a sample Django log:
+
+| Script                                                                        | What it shows                                                                                       |
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| [ip_aggregator/straightforward.py](module04/ip_aggregator/straightforward.py) | The first attempt: find the IP on each line and count requests per address                         |
+| [ip_aggregator/log_analyser.py](module04/ip_aggregator/log_analyser.py)       | A commented pattern with named groups: counts per log level with a bar chart, and top IPs by errors |
 
 📋 Full topic list: **[module04/agenda.md](module04/agenda.md)**
+
+---
+
+# Module 05 — Working with files
+
+Reading and writing files: `open()` and its modes, reading a whole file or line by line, text vs binary,
+encodings, moving around a file with `seek` / `tell`, and why `with` closes the file for you.
+
+| Script                                        | What it shows                                                                                         |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| [_open/ex_01.py](module05/_open/ex_01.py)     | Every `open()` mode — `r`, `w`, `x`, `a`, `b`, `t`, `+` — explained in one table                      |
+| [_open/ex_02.py](module05/_open/ex_02.py)     | Appending to a file with `"a"`, then `close()` (try `"x"` to see it fail on an existing file)         |
+| [_open/ex_03.py](module05/_open/ex_03.py)     | Reading the first N lines with `readline()`, and catching `OSError`                                   |
+| [_open/ex_04.py](module05/_open/ex_04.py)     | `write` vs `writelines` inside `with` — and the error when the folder doesn't exist                  |
+| [_open/ex_05.py](module05/_open/ex_05.py)     | The same text encoded as UTF-8, UTF-16 and cp1251, written and read back in binary mode               |
+| [_open/ex_06.py](module05/_open/ex_06.py)     | Opening an image in `"rb"` — what a binary file looks like as bytes                                   |
+| [_open/ex_07.py](module05/_open/ex_07.py)     | `read(n)`, `tell()` and `seek(0)` — reading the same part of a file twice                             |
+
+📋 Full topic list: **[module05/agenda.md](module05/agenda.md)**
