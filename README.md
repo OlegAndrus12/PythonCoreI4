@@ -17,7 +17,8 @@ Modules are added as lectures happen; the complete previous iteration is [Python
 ├── module02/   Control flow: if / elif / else, the ternary operator, for and while loops, exceptions, first functions
 ├── module03/   Dates, times and randomness: datetime, timedelta, time zones, UTC, time, calendar, random
 ├── module04/   Strings: f-strings and format specs, older formatting styles, string methods, special characters, regex
-├── module05/   Files: open() and its modes, reading and writing, text vs binary, encodings, seek / tell, with
+├── module05/   Files: open() and its modes, reading and writing, text vs binary, encodings, seek / tell, with, pathlib, shutil
+├── module06/   Modules and packages: import, __name__, __init__.py, pip, venv, building and publishing a package
 ```
 
 **Conventions used throughout:**
@@ -26,7 +27,9 @@ Modules are added as lectures happen; the complete previous iteration is [Python
 - The `.html` pages are self-contained: open them straight from disk in a browser, no server or install needed.
 - Every result shown in an HTML page comes from actually running that example on CPython 3.14.3.
 - Every script runs on its own: `python module01/strings/basics.py`. Scripts in `module02/if_statements/` and `module02/while_loop/`, and `module04/methods/_strip.py`, ask for input.
-- Scripts in `module05/_open/` and `module04/ip_aggregator/straightforward.py` open files by relative path — run them from their own folder.
+- Scripts in `module05/` (including `_open/`) and `module04/ip_aggregator/straightforward.py` open files by relative path — run them from their own folder.
+- `module05/_cp.py`, `_mv.py` and `_archive.py` copy, move and archive files; `_cp.py` / `_mv.py` expect a `target/` folder and a `source/icons` folder, so check the paths before running — `_mv.py` really moves files.
+- `module06/console_rich.py` and `module06/utils.py` need `pip install rich`.
 
 ---
 
@@ -247,7 +250,15 @@ expressions for finding text by its shape.
 # Module 05 — Working with files
 
 Reading and writing files: `open()` and its modes, reading a whole file or line by line, text vs binary,
-encodings, moving around a file with `seek` / `tell`, and why `with` closes the file for you.
+encodings, moving around a file with `seek` / `tell`, and why `with` closes the file for you — then
+working with paths and whole folders: `pathlib`, and copying, moving and archiving with `shutil`.
+
+| File                                                                                  | What it is                                                                                                                                         |
+| ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **[python-files.html](module05/python-files.html)**                                   | Interactive cheat sheet (in Ukrainian): tabs for `open()` and `with`, reading and the cursor, writing, binary files and encodings, `pathlib`, `shutil`, the mode table, file exceptions, and ready-made recipes |
+| **[categorise_files_visualizer.html](module05/categorise_files_visualizer.html)**     | Recursive folder walk, step by step: how `categorise_files.py` descends into every folder and copies each file into a folder named after its extension |
+
+**`open()` scripts:**
 
 | Script                                        | What it shows                                                                                         |
 | --------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
@@ -259,4 +270,42 @@ encodings, moving around a file with `seek` / `tell`, and why `with` closes the 
 | [_open/ex_06.py](module05/_open/ex_06.py)     | Opening an image in `"rb"` — what a binary file looks like as bytes                                   |
 | [_open/ex_07.py](module05/_open/ex_07.py)     | `read(n)`, `tell()` and `seek(0)` — reading the same part of a file twice                             |
 
+**Folders and paths — `pathlib` and `shutil`:**
+
+| Script                                                      | What it shows                                                                                                  |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| [parse_folder.py](module05/parse_folder.py)                 | `Path` properties (`parent`, `name`, `suffix`, `exists`, `is_dir`, `is_file`) and a recursive walk with `iterdir()` |
+| [categorise_files.py](module05/categorise_files.py)         | Practice: sort the files of `picture/` (and its subfolders) into `Backup/<extension>/` with `suffix`, `mkdir` and `copyfile` |
+| [_cp.py](module05/_cp.py)                                   | `shutil.copy` for a file and `shutil.copytree` for a whole folder                                              |
+| [_mv.py](module05/_mv.py)                                   | `shutil.move` for a file and for a folder                                                                      |
+| [_archive.py](module05/_archive.py)                         | `shutil.get_archive_formats`, `make_archive` to zip a folder, `unpack_archive` to extract it                   |
+
+The sample data lives in [module05/picture/](module05/picture/) (images to sort), [module05/source/](module05/source/) (files to copy and move) and [module05/Temp/](module05/Temp/) (text and binary files to archive).
+
 📋 Full topic list: **[module05/agenda.md](module05/agenda.md)**
+
+---
+
+# Module 06 — Modules and packages
+
+How Python finds and loads code, how to split a program into modules and packages, how to install
+other people's code with `pip` in a virtual environment, and how to turn your own folder of code into
+a package you can `pip install` and publish.
+
+| File                                                                              | What it is                                                                                                                                                                        |
+| --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **[python-modules-packages.html](module06/python-modules-packages.html)**         | Interactive cheat sheet (in Ukrainian): tabs for `import`, packages and `__main__`, `pip` and PyPI, virtual environments, your own package and publishing, the `moskali` walk-through, and useful libraries |
+| **[cheetsheet.md](module06/cheetsheet.md)**                                       | The same in one page: how imports search `sys.path`, module vs package vs script, `__name__`, `__init__.py`, `pip`, `venv`, project structure, `setuptools`, publishing with `twine`, fun packages |
+
+**Scripts and examples:**
+
+| Script                                                      | What it shows                                                                                                          |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| [utils.py](module06/utils.py)                               | A module that is also a script: `print_table()` runs only under `if __name__ == "__main__"` (needs `rich`)             |
+| [console_rich.py](module06/console_rich.py)                 | Installing and using a third-party package: `rich` colours, a table and a progress bar                                 |
+| [all_example/main.py](module06/all_example/main.py)         | A package with `__all__`: `from shapes import *` brings in only the public names; a private `_validate` needs an explicit import |
+| [all_example/shapes/](module06/all_example/shapes/)         | The `shapes` package itself: `__init__.py` re-exports from `circle.py` and `rectangle.py`                              |
+
+**Practice: a real package** — [moskali/](module06/moskali/) is a console tool built with `argparse` and `rich` that draws tables and bar charts from a JSON data file (Ukrainian General Staff loss figures). It shows the full path from a folder of code to `pip install -e .`: `pyproject.toml`, `setup.cfg`, the `loader` / `stats` / `render` / `cli` split, and building and publishing — see its [README](module06/moskali/README.md).
+
+[env activate.png](module06/env%20activate.png) is a screenshot of activating a virtual environment.

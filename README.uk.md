@@ -17,7 +17,8 @@
 ├── module02/   Керуючі конструкції: if / elif / else, тернарний оператор, цикли for і while, винятки, перші функції
 ├── module03/   Дата, час і випадковість: datetime, timedelta, часові пояси, UTC, time, calendar, random
 ├── module04/   Рядки: f-рядки та специфікація формату, старі способи форматування, методи рядків, спецсимволи, regex
-├── module05/   Файли: open() і його режими, читання й запис, текстовий і двійковий режими, кодування, seek / tell, with
+├── module05/   Файли: open() і його режими, читання й запис, текстовий і двійковий режими, кодування, seek / tell, with, pathlib, shutil
+├── module06/   Модулі та пакети: import, __name__, __init__.py, pip, venv, створення і публікація пакета
 ```
 
 **Домовленості для всіх модулів:**
@@ -26,7 +27,9 @@
 - Сторінки `.html` самодостатні: відкривайте їх просто з диска в браузері, без сервера та встановлення.
 - Кожен результат на HTML-сторінці отримано реальним запуском прикладу на CPython 3.14.3.
 - Кожен скрипт запускається окремо: `python module01/strings/basics.py`. Скрипти в `module02/if_statements/` і `module02/while_loop/`, а також `module04/methods/_strip.py` просять ввести дані.
-- Скрипти в `module05/_open/` і `module04/ip_aggregator/straightforward.py` відкривають файли за відносним шляхом — запускайте їх з їхньої папки.
+- Скрипти в `module05/` (зокрема `_open/`) і `module04/ip_aggregator/straightforward.py` відкривають файли за відносним шляхом — запускайте їх з їхньої папки.
+- `module05/_cp.py`, `_mv.py` і `_archive.py` копіюють, переносять і архівують файли; `_cp.py` / `_mv.py` очікують папку `target/` і папку `source/icons`, тож перевірте шляхи перед запуском — `_mv.py` справді переносить файли.
+- `module06/console_rich.py` і `module06/utils.py` потребують `pip install rich`.
 
 ---
 
@@ -248,7 +251,15 @@
 
 Читання й запис файлів: `open()` і його режими, читання всього файлу або рядок за рядком, текстовий і
 двійковий режими, кодування, переміщення у файлі за допомогою `seek` / `tell` і чому `with` закриває файл
-за вас.
+за вас — а далі робота зі шляхами та цілими папками: `pathlib`, копіювання, перенесення й архівування через
+`shutil`.
+
+| Файл | Що це |
+| --- | --- |
+| **[python-files.html](module05/python-files.html)** | Інтерактивна шпаргалка: вкладки для `open()` і `with`, читання та курсора, запису, двійкових файлів і кодувань, `pathlib`, `shutil`, таблиці режимів, винятків при роботі з файлами та готових рецептів |
+| **[categorise_files_visualizer.html](module05/categorise_files_visualizer.html)** | Рекурсивний обхід папок крок за кроком: як `categorise_files.py` заходить у кожну папку і копіює кожен файл у папку з назвою його розширення |
+
+**Скрипти з `open()`:**
 
 | Скрипт | Що показує |
 | --- | --- |
@@ -260,4 +271,42 @@
 | [_open/ex_06.py](module05/_open/ex_06.py) | Відкриття зображення в режимі `"rb"` — як виглядає двійковий файл у байтах |
 | [_open/ex_07.py](module05/_open/ex_07.py) | `read(n)`, `tell()` і `seek(0)` — повторне читання тієї самої частини файлу |
 
+**Папки та шляхи — `pathlib` і `shutil`:**
+
+| Скрипт | Що показує |
+| --- | --- |
+| [parse_folder.py](module05/parse_folder.py) | Властивості `Path` (`parent`, `name`, `suffix`, `exists`, `is_dir`, `is_file`) і рекурсивний обхід через `iterdir()` |
+| [categorise_files.py](module05/categorise_files.py) | Практика: розкласти файли з `picture/` (і підпапок) у `Backup/<розширення>/` за допомогою `suffix`, `mkdir` і `copyfile` |
+| [_cp.py](module05/_cp.py) | `shutil.copy` для файлу і `shutil.copytree` для цілої папки |
+| [_mv.py](module05/_mv.py) | `shutil.move` для файлу і для папки |
+| [_archive.py](module05/_archive.py) | `shutil.get_archive_formats`, `make_archive` — запакувати папку в zip, `unpack_archive` — розпакувати |
+
+Приклади даних: [module05/picture/](module05/picture/) (зображення для сортування), [module05/source/](module05/source/) (файли для копіювання й перенесення) і [module05/Temp/](module05/Temp/) (текстові й двійкові файли для архівування).
+
 📋 Повний перелік тем: **[module05/agenda.md](module05/agenda.md)**
+
+---
+
+# Модуль 06 — Модулі та пакети
+
+Як Python знаходить і завантажує код, як розбити програму на модулі та пакети, як встановлювати чужий код
+через `pip` у віртуальному середовищі і як перетворити власну папку з кодом на пакет, який можна
+встановити через `pip install` і опублікувати.
+
+| Файл | Що це |
+| --- | --- |
+| **[python-modules-packages.html](module06/python-modules-packages.html)** | Інтерактивна шпаргалка: вкладки для `import`, пакетів і `__main__`, `pip` і PyPI, віртуальних середовищ, власного пакета та публікації, розбору `moskali` і корисних бібліотек |
+| **[cheetsheet.md](module06/cheetsheet.md)** | Те саме на одній сторінці (англійською): як імпорт шукає в `sys.path`, модуль, пакет і скрипт, `__name__`, `__init__.py`, `pip`, `venv`, структура проєкту, `setuptools`, публікація через `twine`, кумедні пакети |
+
+**Скрипти та приклади:**
+
+| Скрипт | Що показує |
+| --- | --- |
+| [utils.py](module06/utils.py) | Модуль, який водночас є скриптом: `print_table()` виконується лише під `if __name__ == "__main__"` (потрібен `rich`) |
+| [console_rich.py](module06/console_rich.py) | Встановлення й використання стороннього пакета: кольори `rich`, таблиця і смуга прогресу |
+| [all_example/main.py](module06/all_example/main.py) | Пакет з `__all__`: `from shapes import *` підтягує лише публічні імена; приватна `_validate` потребує явного імпорту |
+| [all_example/shapes/](module06/all_example/shapes/) | Сам пакет `shapes`: `__init__.py` реекспортує імена з `circle.py` і `rectangle.py` |
+
+**Практика: справжній пакет** — [moskali/](module06/moskali/) — консольна утиліта на `argparse` і `rich`, яка малює таблиці й стовпчикові діаграми з JSON-файлу (дані Генерального штабу ЗСУ про втрати). Вона показує весь шлях від папки з кодом до `pip install -e .`: `pyproject.toml`, `setup.cfg`, розділення на `loader` / `stats` / `render` / `cli`, збирання та публікація — див. її [README](module06/moskali/README.md).
+
+[env activate.png](module06/env%20activate.png) — знімок екрана активації віртуального середовища.
