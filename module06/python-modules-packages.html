@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Шпаргалка: модулі та pip</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Onest:wght@600;800&display=swap">
+<style>
+/* Layout: tabbed cheatsheet. Sticky tab rail of types; each panel = header, properties, methods, REPL cells. */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --ink: #141a24;
+  --muted: #5a6476;
+  --line: #dbe0e8;
+  --accent: #2354c7;
+  --accent-soft: #e6edfb;
+  --err: #b4322b;
+  --err-soft: #fbeceb;
+  --ok: #1f7a4d;
+  /* memory roles */
+  --m-gc: #eceef2;   --m-gc-ink: #6b7384;
+  --m-head: #dfe7f7; --m-head-ink: #23407f;
+  --m-meta: #ece3f7; --m-meta-ink: #5a3290;
+  --m-ptr: #d9f0ec;  --m-ptr-ink: #105e52;
+  --m-data: #fbefc9; --m-data-ink: #7a5300;
+  --m-empty: #f6f7f9; --m-empty-ink: #9aa2b1;
+  --font-display: "Onest", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1218; --surface: #151b24; --ink: #e5e9f0; --muted: #98a2b4; --line: #283141;
+    --accent: #86a8ff; --accent-soft: #1b2740; --err: #ff8a80; --err-soft: #3a1d1d; --ok: #6fd3a0;
+    --m-gc: #1d222b; --m-gc-ink: #8d96a7;
+    --m-head: #1b2a48; --m-head-ink: #a9c1f7;
+    --m-meta: #2b2140; --m-meta-ink: #cdb4f5;
+    --m-ptr: #12322d; --m-ptr-ink: #8fe0d1;
+    --m-data: #3a2f12; --m-data-ink: #f4d27a;
+    --m-empty: #181d25; --m-empty-ink: #5f6878;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1218; --surface: #151b24; --ink: #e5e9f0; --muted: #98a2b4; --line: #283141;
+  --accent: #86a8ff; --accent-soft: #1b2740; --err: #ff8a80; --err-soft: #3a1d1d; --ok: #6fd3a0;
+  --m-gc: #1d222b; --m-gc-ink: #8d96a7;
+  --m-head: #1b2a48; --m-head-ink: #a9c1f7;
+  --m-meta: #2b2140; --m-meta-ink: #cdb4f5;
+  --m-ptr: #12322d; --m-ptr-ink: #8fe0d1;
+  --m-data: #3a2f12; --m-data-ink: #f4d27a;
+  --m-empty: #181d25; --m-empty-ink: #5f6878;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-inline: 16px; padding-block: 0 64px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; }
+code, pre, .mono { font-family: var(--font-mono); font-size: 0.9em; font-variant-ligatures: none; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+/* header */
+.top { padding-block: 32px 18px; display: flex; flex-wrap: wrap; gap: 12px 32px; align-items: end; justify-content: space-between; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(28px, 4.4vw, 42px); line-height: 1.05; margin: 6px 0 8px; letter-spacing: -0.01em; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); max-width: 62ch; }
+.key-legend { display: flex; gap: 16px; font-size: 13px; color: var(--muted); }
+.key-legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+/* tabs */
+.tabs {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg); border-bottom: 1px solid var(--line);
+  margin-inline: -16px; padding-inline: 16px;
+}
+.tablist { max-width: 1180px; margin: 0 auto; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.tablist::-webkit-scrollbar { display: none; }
+.tab {
+  appearance: none; border: 0; background: none; cursor: pointer; color: var(--muted);
+  font-family: var(--font-mono); font-size: 15px; font-weight: 500;
+  padding: 12px 14px 11px; border-bottom: 3px solid transparent; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 700; }
+.dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid currentColor; flex: none; }
+.dot.mut { background: currentColor; }
+.tab .dot { color: var(--accent); }
+
+/* panel header */
+.panel { padding-block: 28px 0; }
+.p-head { display: grid; grid-template-columns: auto 1fr; gap: 6px 28px; align-items: start; }
+.p-name { font-family: var(--font-mono); font-weight: 700; font-size: clamp(44px, 8vw, 76px); line-height: 0.95; letter-spacing: -0.03em; color: var(--accent); }
+.p-tag { font-size: 18px; margin: 4px 0 12px; max-width: 60ch; text-wrap: pretty; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-family: var(--font-mono); font-size: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; }
+.flags { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 14px; font-size: 13px; }
+.flag { display: inline-flex; gap: 6px; align-items: baseline; }
+.flag b { font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; font-size: 11px; color: var(--muted); }
+.flag .yes { color: var(--ok); font-weight: 600; }
+.flag .no { color: var(--muted); }
+@media (max-width: 640px) { .p-head { grid-template-columns: 1fr; } }
+
+/* sections */
+section.s { margin-top: 40px; }
+.s-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 18px; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 22px; margin: 0; letter-spacing: -0.005em; }
+.s-h .sub { color: var(--muted); font-size: 13px; }
+.s-h .grow { flex: 1; }
+
+/* properties */
+.props { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 18px 36px; }
+.prop { min-width: 0; padding-top: 10px; border-top: 1px solid var(--line); }
+.prop h3 { font-size: 15px; font-weight: 600; margin: 0 0 3px; }
+.prop p { margin: 0; color: var(--muted); font-size: 14px; }
+.prop code, .notes code, .m-desc code { color: var(--ink); background: var(--surface); border: 1px solid var(--line); padding: 0 4px; border-radius: 3px; font-size: 0.86em; }
+
+/* methods */
+.filter { font-family: var(--font-mono); font-size: 14px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); width: min(100%, 16em); }
+.m-group { font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; color: var(--muted); margin: 22px 0 6px; }
+.m-group:first-child { margin-top: 0; }
+.m-row { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr) minmax(0, 1.25fr); gap: 6px 24px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.m-name { font-family: var(--font-mono); font-weight: 700; font-size: 15px; }
+.m-sig { font-family: var(--font-mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; margin-top: 2px; }
+.m-desc { font-size: 14px; }
+.m-empty { color: var(--muted); padding: 12px 0; }
+@media (max-width: 900px) { .m-row { grid-template-columns: 1fr; } }
+.m-note { font-size: 14px; color: var(--muted); margin: -6px 0 12px; }
+
+/* code cells */
+.cell { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.cell pre { margin: 0; padding: 8px 12px; overflow-x: auto; font-size: 13px; line-height: 1.5; }
+.cell .res { border-top: 1px dashed var(--line); padding: 6px 12px; font-family: var(--font-mono); font-size: 13px; overflow-x: auto; white-space: pre; display: flex; gap: 8px; }
+.cell .res::before { content: "→"; color: var(--muted); flex: none; }
+.cell .res.err { background: var(--err-soft); color: var(--err); }
+.cell .res.err::before { content: "✕"; }
+.cell .stdout { padding: 4px 12px 0; font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); white-space: pre; }
+.cell .stdout::before { content: "виводить: "; font-family: var(--font-body); }
+.cell .note { padding: 0 12px 8px; font-size: 12.5px; color: var(--muted); }
+.ops { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 12px; }
+.ops .cell .note { padding-top: 6px; }
+.tk-k { color: var(--m-meta-ink); font-weight: 500; }
+.tk-s { color: var(--ok); }
+.tk-n { color: var(--m-data-ink); }
+.tk-b { color: var(--accent); }
+.tk-c { color: var(--muted); font-style: italic; }
+
+/* truth table + compare */
+.tbl-scroll { overflow-x: auto; }
+table.t { border-collapse: collapse; font-size: 14px; width: 100%; }
+table.t th, table.t td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.t th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+table.t td.n { font-family: var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; }
+table.t td.y { color: var(--ok); font-weight: 600; }
+table.t td.x { color: var(--muted); }
+table.t td code { font-weight: 700; }
+table.t tbody tr:hover { background: var(--surface); }
+.truth td { font-family: var(--font-mono); text-align: center; }
+.truth th { text-align: center; }
+
+footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+footer p { margin: 0 0 4px; max-width: 80ch; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .panel { animation: rise 0.22s ease-out; }
+  @keyframes rise { from { transform: translateY(4px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+}
+/* concept tabs: mutability, typing, precedence, collections */
+.tab.concept { font-family: var(--font-body); }
+.tab.sep { margin-left: auto; }
+table.t th .mono { text-transform: none; letter-spacing: 0; }
+.callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 10px 14px; border-radius: 0 var(--radius) var(--radius) 0; font-size: 14px; max-width: 76ch; margin: 0; }
+.callout code, .fig .cap code, .mk-n code, .fq code, td.wrap code { background: var(--surface); border: 1px solid var(--line); padding: 0 4px; border-radius: 3px; font-size: 0.86em; }
+.fine { color: var(--muted); font-size: 13px; max-width: 80ch; margin: 12px 0 0; }
+.fine p { margin: 2px 0; }
+
+.figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 16px; }
+.fig { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.fig h3 { font-size: 14px; font-weight: 600; margin: 0 0 10px; }
+.fig svg { display: block; width: 100%; height: auto; }
+.fig .cap { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+.fig svg text { font-family: var(--font-mono); font-size: 13px; fill: var(--ink); }
+.fig svg .sv-h { font-family: var(--font-body); font-size: 12px; fill: var(--muted); }
+.fig svg .sv-sub { font-size: 11px; fill: var(--muted); }
+.n-name { fill: var(--m-head); stroke: var(--m-head-ink); }
+.t-name { fill: var(--m-head-ink) !important; font-weight: 700; }
+.n-obj { fill: var(--m-data); stroke: var(--m-data-ink); }
+.n-new { fill: var(--m-ptr); stroke: var(--m-ptr-ink); }
+.n-lit { fill: var(--surface); stroke: var(--muted); }
+.n-off { fill: var(--m-empty); stroke: var(--line); }
+.n-hit { fill: var(--m-ptr); stroke: var(--ok); stroke-width: 2; }
+.edge { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.edge.hot { stroke: var(--ok); stroke-width: 2; }
+.ah { fill: var(--muted); }
+.ah.hot { fill: var(--ok); }
+.sv-ok { fill: var(--ok) !important; font-weight: 700; }
+.divider { stroke: var(--line); stroke-dasharray: 4 4; }
+
+/* group colours (precedence) */
+.g-acc { --g: var(--m-gc); --gi: var(--m-gc-ink); }
+.g-ar { --g: var(--m-data); --gi: var(--m-data-ink); }
+.g-bit { --g: var(--m-meta); --gi: var(--m-meta-ink); }
+.g-cmp { --g: var(--m-ptr); --gi: var(--m-ptr-ink); }
+.g-log { --g: var(--m-head); --gi: var(--m-head-ink); }
+.g-oth { --g: var(--err-soft); --gi: var(--err); }
+.op-node { fill: var(--g); stroke: var(--gi); stroke-width: 1.5; }
+
+/* mutability tree */
+.tree { display: grid; justify-items: center; }
+.tree-root { font-family: var(--font-display); font-weight: 600; background: var(--ink); color: var(--bg); padding: 8px 18px; border-radius: var(--radius); }
+.tree-stem { width: 2px; height: 18px; background: var(--muted); }
+.tree-br { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; padding-top: 18px; }
+.tree-br::before { content: ""; position: absolute; top: 0; left: 25%; right: 25%; height: 18px; border: 2px solid var(--muted); border-bottom: 0; border-radius: 6px 6px 0 0; }
+.branch { min-width: 0; background: var(--surface); border: 1.5px solid var(--line); border-top: 4px solid var(--bc); border-radius: var(--radius); padding: 12px 14px; }
+.branch.mut { --bc: var(--m-data-ink); }
+.branch.imm { --bc: var(--accent); }
+.branch h3 { margin: 0; font-size: 16px; display: flex; gap: 8px; align-items: center; }
+.branch .dot { color: var(--bc); }
+.branch p { margin: 2px 0 10px; color: var(--muted); font-size: 13px; }
+.branch ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: 4px 12px; }
+.branch li { display: flex; gap: 8px; align-items: baseline; font-size: 13px; color: var(--muted); }
+.branch li code { color: var(--ink); font-weight: 700; font-size: 14px; }
+.branch li a { text-decoration: none; }
+.branch li a code { color: var(--accent); }
+
+/* yes/no marks in tables */
+table.t td.wrap { white-space: normal; min-width: 12rem; }
+td.mk .sym { font-weight: 700; font-family: var(--font-mono); }
+td.mk.y .sym { color: var(--ok); }
+td.mk.no .sym { color: var(--err); }
+td.mk.warn .sym { color: var(--m-data-ink); }
+td.mk.mid .sym { color: var(--muted); }
+.mk-n { color: var(--muted); font-size: 13px; }
+table.t th.hl, table.t td.hl { background: var(--accent-soft); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); margin-top: 10px; }
+.legend b { font-family: var(--font-mono); }
+
+/* typing quadrant */
+.quad { display: grid; grid-template-columns: minmax(64px, auto) 1fr 1fr; gap: 8px; max-width: 860px; }
+.q-ax { font-weight: 600; font-size: 14px; display: flex; flex-direction: column; justify-content: center; }
+.q-ax small { font-weight: 400; color: var(--muted); font-size: 12px; }
+.q-x { text-align: center; }
+.q-cell { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.q-cell.hot { border: 2px solid var(--accent); background: var(--accent-soft); }
+.q-t { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+.q-langs { display: flex; flex-wrap: wrap; gap: 4px; }
+.q-langs span { font-size: 13px; border: 1px solid var(--line); border-radius: 4px; padding: 0 6px; background: var(--bg); }
+.q-langs span.me { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+.q-ex { font-size: 13px; overflow-wrap: anywhere; }
+.q-ex .r { color: var(--muted); }
+.q-ex .r.no { color: var(--err); }
+.q-ex .r.warn { color: var(--m-data-ink); }
+
+/* typing timelines */
+.lanes { display: grid; gap: 14px; }
+.lane-h { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+.lane-h span { color: var(--muted); font-weight: 400; }
+.steps { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.st { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 10px; font-size: 13px; line-height: 1.3; }
+.st small { display: block; color: var(--muted); font-size: 12px; }
+.st.ok { border-color: var(--ok); }
+.st.bad { border-color: var(--err); background: var(--err-soft); color: var(--err); font-weight: 600; }
+.st.bad small { color: var(--err); font-weight: 400; }
+.st.off { opacity: 0.45; border-style: dashed; }
+.steps .arr { color: var(--muted); }
+
+/* precedence */
+.strip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 4px; font-size: 13px; }
+.strip .pc { font-family: var(--font-mono); background: var(--g); color: var(--gi); border-radius: 4px; padding: 2px 8px; font-weight: 600; white-space: nowrap; }
+.strip .gt { color: var(--muted); }
+.strip .end { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+.g-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 13px; }
+.g-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.g-legend i { width: 12px; height: 12px; border-radius: 3px; background: var(--g); border: 1px solid var(--gi); }
+table.prec td.num { font-family: var(--font-mono); font-weight: 700; text-align: center; background: var(--g); color: var(--gi); width: 2.5em; }
+table.prec td.grp { font-weight: 600; color: var(--gi); border-left: 4px solid var(--gi); vertical-align: top; }
+table.prec td.opsx { white-space: normal; min-width: 11rem; }
+table.prec td.opsx code { display: inline-block; margin: 1px 6px 1px 0; }
+.assoc { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+.as-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 4px; justify-items: start; }
+.as-card h3 { margin: 0 0 4px; font-size: 14px; }
+.as-card code { font-size: 15px; }
+.as-card .dn { color: var(--muted); font-size: 13px; }
+.as-card .grp1 { background: var(--m-data); color: var(--m-data-ink); border-radius: 3px; padding: 0 2px; }
+.paren { font-size: 14px; overflow-x: auto; white-space: nowrap; padding: 8px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); margin: 0 0 12px; }
+
+/* collections */
+table.bigo td.o { font-family: var(--font-mono); text-align: center; font-weight: 600; }
+table.bigo td.o1 { background: var(--m-ptr); color: var(--m-ptr-ink); }
+table.bigo td.on { background: var(--m-data); color: var(--m-data-ink); }
+table.bigo td.ox { color: var(--muted); }
+table.bigo td.o sup { font-weight: 400; }
+table.coll th.c, table.bigo th.c { text-align: center; font-family: var(--font-mono); text-transform: none; font-size: 14px; color: var(--ink); letter-spacing: 0; }
+table.coll td.mk, table.coll td.cc { text-align: center; }
+.flow { display: grid; grid-template-columns: minmax(0, 24rem) auto auto; gap: 0 10px; align-items: center; justify-content: start; }
+.fq { grid-column: 1; background: var(--surface); border: 1.5px solid var(--muted); border-radius: var(--radius); padding: 9px 14px; font-weight: 500; }
+.fy { color: var(--ok); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.fr { font-family: var(--font-mono); font-weight: 700; background: var(--accent); color: var(--bg); padding: 4px 12px; border-radius: var(--radius); text-decoration: none; justify-self: start; }
+.fr small { font-weight: 400; font-family: var(--font-body); opacity: 0.85; }
+.fn { grid-column: 1; justify-self: center; color: var(--muted); font-size: 13px; padding: 3px 0; }
+.fn::before { content: "↓ "; }
+.flow .fr.last { grid-column: 1; justify-self: center; }
+@media (max-width: 560px) {
+  .tree-br { grid-template-columns: 1fr; }
+  .tree-br::before { display: none; }
+  .quad { grid-template-columns: 1fr; }
+  .quad .q-ax.q-y1, .quad .q-ax.q-y2, .quad .q-blank, .quad .q-x { display: none; }
+  .flow { grid-template-columns: minmax(0, 1fr) auto auto; }
+}
+
+.imp { margin: 0 0 8px; max-width: 760px; }
+.imp-l { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin: 18px 0 6px; }
+.p-name.small { font-size: clamp(34px, 6vw, 56px); }
+.tab { font-family: var(--font-mono); }
+.tab.sep { margin-left: auto; font-family: var(--font-body); }
+.tab.concept { font-family: var(--font-body); }
+table.fmt td.c code { font-size: 15px; font-weight: 700; color: var(--accent); }
+table.fmt td.ex { font-family: var(--font-mono); white-space: pre; font-size: 13px; }
+table.fmt td.out { color: var(--ok); }
+table.fmt td.out.err { color: var(--err); }
+table.fmt td.wrap { white-space: normal; min-width: 14rem; }
+table.fmt td.p-yes { color: var(--ok); font-weight: 600; }
+table.fmt td.p-no { color: var(--muted); }
+table.fmt td.p-pair { color: var(--m-data-ink); font-weight: 600; }
+.fmt-group td { background: var(--accent-soft); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.notes { margin: 0; padding-left: 18px; max-width: 80ch; color: var(--muted); font-size: 14px; }
+.notes li { margin: 4px 0; }
+.refdate { font-size: 14px; margin: 0 0 12px; color: var(--muted); }
+.refdate b { color: var(--ink); }
+.cell .stdout::before { content: "виводить: "; }
+.cell pre { white-space: pre; }
+.cell pre, .cell .res { tab-size: 4; }
+
+/* UTC tab: world map with 15-degree zone strips, live city clocks */
+/* Code cells show their full content: wrap long lines instead of scrolling */
+.cell pre, .cell .res, .cell .stdout, table.fmt td.ex { white-space: pre-wrap; overflow-wrap: anywhere; overflow-x: visible; }
+.cell pre, .cell .res { font-size: 13.5px; }
+.m-row { grid-template-columns: minmax(0, 13rem) minmax(0, 1fr) minmax(0, 1.6fr); }
+.ops { grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); }
+table.fmt td.ex { min-width: 16rem; }
+/* Wide terminal output (rich tables): full row, no wrapping */
+.ops .cell.wide { grid-column: 1 / -1; }
+.cell.wide .stdout { white-space: pre; overflow-x: auto; }
+@media (max-width: 640px) {
+  table.fmt thead { display: none; }
+  table.fmt, table.fmt tbody, table.fmt tr, table.fmt td { display: block; width: 100%; }
+  table.fmt tr { border-bottom: 1px solid var(--line); padding: 6px 0; }
+  table.fmt td { border: 0; padding: 2px 4px; white-space: normal; min-width: 0; }
+  table.fmt td.ex { min-width: 0; }
+}
+/* module06: project files, note column, links */
+.cell .fname { padding: 6px 12px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--muted); border-bottom: 1px solid var(--line); background: var(--bg); }
+.ops.files { margin-bottom: 8px; }
+table.fmt td.note-c { color: var(--muted); font-size: 13.5px; min-width: 16rem; }
+table.fmt td.note-c code, table.fmt td.wrap code { color: var(--ink); }
+a { color: var(--accent); }
+.notes a, td.note-c a, .p-tag a, .step-d a { text-underline-offset: 2px; }
+.step-n { flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--bg); font-family: var(--font-mono); font-weight: 700; font-size: 14px; align-self: center; }
+.step-d { max-width: 80ch; margin: 0 0 14px; }
+.step-d p { margin: 0 0 8px; }
+.step-d code { background: var(--surface); border: 1px solid var(--line); padding: 0 4px; border-radius: 3px; font-size: 0.86em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow" id="ver"></div>
+      <h1>Шпаргалка: модулі, пакети та pip</h1>
+      <p class="lede">Як працює <code>import</code> і де Python шукає модулі, пакети з <code>__init__.py</code> і <code>__all__</code>, <code>if __name__ == "__main__"</code>, pip, віртуальні середовища та публікація свого пакета на PyPI.</p>
+    </div>
+  </header>
+</div>
+<nav class="tabs" aria-label="Розділи">
+  <div class="tablist" role="tablist" id="tablist"></div>
+</nav>
+<main class="wrap" id="panels"></main>
+<div class="wrap">
+  <footer>
+    <p>Кожен результат Python-прикладу на цій сторінці отримано справжнім запуском у CPython <span id="ver2"></span>: кожен приклад — в окремому процесі, у теці <code>project/</code> з файлами, показаними на вкладках (шлях до неї скорочено). Команди терміналу наведено без виводу.</p>
+  </footer>
+</div>
+<script>
+const DATA = {"version": "3.14.3", "tabs": [{"key": "import", "label": "import", "kind": "api", "title": "Імпорт модулів", "tagline": "`import` знаходить модуль, один раз виконує його код і прив'язує ім'я в поточному файлі. Модуль — це звичайний `.py` файл, і після імпорту він стає об'єктом з атрибутами.", "chips": ["import math", "import datetime as dt", "from math import pi", "from shapes import *", "sys.path", "importlib.reload(m)"], "imp": "", "files": [{"name": "greet.py", "code": "print(f\"greet: виконується, __name__ = {__name__!r}\")\n\n\ndef hello(name):\n    return f\"Привіт, {name}!\"\n\n\nif __name__ == \"__main__\":\n    print(hello(\"світ\"))"}, {"name": "shapes/__init__.py", "code": "from .circle import area as circle_area, circumference\nfrom .rectangle import area as rect_area, perimeter\n\n# __all__ defines the public API of this package.\n# Only these names are exported when someone does: from shapes import *\n# The private helpers (_validate in each module) are excluded automatically\n# because they start with underscore, but __all__ also excludes anything\n# not listed — even public names that weren't imported here.\n__all__ = [\n    \"circle_area\",\n    \"circumference\",\n    \"rect_area\",\n    \"perimeter\",\n]"}, {"name": "shapes/circle.py", "code": "import math\n\ndef area(radius):\n    return math.pi * radius ** 2\n\ndef circumference(radius):\n    return 2 * math.pi * radius\n\ndef _validate(radius):\n    if radius <= 0:\n        raise ValueError(\"radius must be positive\")"}, {"name": "circ_a.py", "code": "from circ_b import B\n\nA = \"a\""}, {"name": "circ_b.py", "code": "from circ_a import A\n\nB = \"b\""}, {"name": "shadow/random.py", "code": "print(\"це мій random.py, а не стандартний\")"}], "methodsTitle": "Форми імпорту й інструменти", "props": [{"t": "Що робить import", "d": "Шукає модуль, виконує його код **лише при першому імпорті**, кладе готовий об'єкт у кеш `sys.modules` і створює ім'я в поточному файлі."}, {"t": "Де Python шукає", "d": "1) `sys.modules` — вже завантажені; 2) вбудовані в інтерпретатор (`sys`, `builtins`); 3) теки зі списку `sys.path`: тека скрипта, `PYTHONPATH`, стандартна бібліотека, `site-packages` активного середовища."}, {"t": "Модуль, скрипт, пакет", "d": "**Модуль** — `.py` файл, який імпортують. **Скрипт** — файл, який запускають: `python file.py`. **Пакет** — тека з модулями (і зазвичай з `__init__.py`). Один файл може бути і модулем, і скриптом."}, {"t": "Стиль PEP 8", "d": "Імпорти — на початку файлу, по одному модулю в рядку, трьома групами через порожній рядок: стандартна бібліотека, сторонні пакети, свої модулі. `from x import *` у робочому коді краще не писати."}], "methods": [{"ex": "import math\nmath.sqrt(16)", "out": "4.0", "err": false, "stdout": "", "note": "", "group": "Форми import", "name": "import x", "sig": "import module", "desc": "Імпортує модуль цілком. Звертання через крапку: `math.sqrt`."}, {"ex": "import datetime as dt\ndt.date(2025, 1, 1)", "out": "datetime.date(2025, 1, 1)", "err": false, "stdout": "", "note": "", "group": "Форми import", "name": "import x as y", "sig": "import module as alias", "desc": "Коротший псевдонім. Поширені: `import numpy as np`, `import pandas as pd`."}, {"ex": "from math import pi, sqrt\nround(sqrt(pi), 3)", "out": "1.772", "err": false, "stdout": "", "note": "", "group": "Форми import", "name": "from x import a, b", "sig": "from module import name", "desc": "Бере з модуля лише потрібні імена. Ім'я самого модуля не створюється."}, {"ex": "from shapes.circle import area as circle_area\nround(circle_area(2), 2)", "out": "12.57", "err": false, "stdout": "", "note": "", "group": "Форми import", "name": "from x import a as b", "sig": "from module import name as alias", "desc": "Імпорт із перейменуванням: зручно, коли імена конфліктують."}, {"ex": "from shapes import *\nrect_area(4, 6), perimeter(4, 6)", "out": "(24, 20)", "err": false, "stdout": "", "note": "", "group": "Форми import", "name": "from x import *", "sig": "from module import *", "desc": "Усі публічні імена (або лише ті, що в `__all__`). Ховає, звідки взялося ім'я — добре для REPL, погано для коду."}, {"ex": "import shapes.circle\nround(shapes.circle.circumference(1), 4)", "out": "6.2832", "err": false, "stdout": "", "note": "", "group": "Форми import", "name": "import pkg.mod", "sig": "import package.module", "desc": "Імпорт модуля з пакета. Звертання — повним шляхом."}, {"ex": "import sys\nsys.path[0]", "out": "'/…/project'", "err": false, "stdout": "", "note": "", "group": "Де Python шукає", "name": "sys.path", "sig": "sys.path: list[str]", "desc": "Список тек для пошуку. Перший елемент — тека запущеного скрипта."}, {"ex": "import sys\nimport greet\n\"greet\" in sys.modules", "out": "True", "err": false, "stdout": "greet: виконується, __name__ = 'greet'\n", "note": "", "group": "Де Python шукає", "name": "sys.modules", "sig": "sys.modules: dict", "desc": "Кеш уже імпортованих модулів. Повторний `import` бере модуль звідси."}, {"ex": "import sys\n\"sys\" in sys.builtin_module_names, \"json\" in sys.builtin_module_names", "out": "(True, False)", "err": false, "stdout": "", "note": "", "group": "Де Python шукає", "name": "builtin_module_names", "sig": "sys.builtin_module_names", "desc": "Модулі, вшиті в інтерпретатор: їх не шукають у теках."}, {"ex": "import importlib.util\nimportlib.util.find_spec(\"shapes\") is not None, importlib.util.find_spec(\"no_such_lib\")", "out": "(True, None)", "err": false, "stdout": "", "note": "", "group": "Де Python шукає", "name": "find_spec", "sig": "importlib.util.find_spec(name)", "desc": "Чи знайдеться модуль, без імпорту. `None` — не знайдено (наприклад, пакет не встановлено)."}, {"ex": "import shapes.circle\nshapes.circle.__name__, shapes.circle.__file__", "out": "('shapes.circle', '/…/project/shapes/circle.py')", "err": false, "stdout": "", "note": "", "group": "Модуль як об'єкт", "name": "__name__ / __file__", "sig": "module.__name__, module.__file__", "desc": "Ім'я модуля і шлях до файлу, з якого його завантажено."}, {"ex": "import shapes\n[n for n in dir(shapes) if not n.startswith(\"__\")]", "out": "['circle', 'circle_area', 'circumference', 'perimeter', 'rect_area', 'rectangle']", "err": false, "stdout": "", "note": "", "group": "Модуль як об'єкт", "name": "dir(module)", "sig": "dir(module)", "desc": "Імена всередині модуля. Підмодулі пакета теж стають його атрибутами."}, {"ex": "import math\nhelp(math.hypot)", "out": "", "err": false, "stdout": "Help on built-in function hypot in module math:\n\nhypot(*coordinates)\n    Multidimensional Euclidean distance from the origin to a point.\n\n    Roughly equivalent to:\n        sqrt(sum(x**2 for x in coordinates))\n\n    For a two dimensional point (x, y), gives the hypotenuse\n    using the Pythagorean theorem:  sqrt(x*x + y*y).\n\n    For example, the hypotenuse of a 3/4/5 right triangle is:\n\n        >>> hypot(3.0, 4.0)\n        5.0\n\n", "note": "", "group": "Модуль як об'єкт", "name": "help(obj)", "sig": "help(object)", "desc": "Документація з docstring: працює для модулів, функцій, класів."}, {"ex": "import importlib\nmod = importlib.import_module(\"math\")\nmod.factorial(5)", "out": "120", "err": false, "stdout": "", "note": "", "group": "Динамічний імпорт", "name": "import_module", "sig": "importlib.import_module(name)", "desc": "Імпорт за назвою-рядком, наприклад з налаштувань."}, {"ex": "import importlib\nimport greet\nimportlib.reload(greet)", "out": "<module 'greet' from '/…/project/greet.py'>", "err": false, "stdout": "greet: виконується, __name__ = 'greet'\ngreet: виконується, __name__ = 'greet'\n", "note": "", "group": "Динамічний імпорт", "name": "reload", "sig": "importlib.reload(module)", "desc": "Виконує код модуля ще раз. Потрібно в REPL, коли файл змінився."}], "ops": [{"ex": "import greet\nimport greet\nimport greet", "out": "", "err": false, "stdout": "greet: виконується, __name__ = 'greet'\n", "note": "код модуля виконався один раз: далі `import` бере його з `sys.modules`"}, {"ex": "import no_such_lib", "out": "ModuleNotFoundError: No module named 'no_such_lib'", "err": true, "stdout": "", "note": "пакет не встановлено в активне середовище або помилка в назві"}, {"ex": "from math import squareroot", "out": "ImportError: cannot import name 'squareroot' from 'math' (unknown location)", "err": true, "stdout": "", "note": "модуль є, а такого імені в ньому немає"}, {"ex": "import math\nsqrt(16)", "out": "NameError: name 'sqrt' is not defined", "err": true, "stdout": "", "note": "`import math` створює лише ім'я `math`"}, {"ex": "from math import *\nfrom cmath import *\nsqrt(4)", "out": "(2+0j)", "err": false, "stdout": "", "note": "другий `*` тихо перезаписав `sqrt` версією з `cmath`"}, {"ex": "from shapes import *\n_validate(5)", "out": "NameError: name '_validate' is not defined", "err": true, "stdout": "", "note": "`*` не імпортує імена з `_` і ті, яких немає в `__all__`"}, {"ex": "from shapes.circle import _validate\n_validate(-1)", "out": "ValueError: radius must be positive", "err": true, "stdout": "", "note": "явний імпорт «приватного» імені працює: `_` — лише домовленість"}, {"ex": "import sys\nsys.path.insert(0, \"shadow\")\nimport random\nrandom.randint(1, 6)", "out": "AttributeError: module 'random' has no attribute 'randint'", "err": true, "stdout": "це мій random.py, а не стандартний\n", "note": "файл `random.py` у вашій теці перекриває стандартний модуль. Не називайте файли як модулі stdlib"}, {"ex": "import circ_a", "out": "ImportError: cannot import name 'A' from 'circ_a' (consider renaming '/…/project/circ_a.py' if it has the same name as a library you intended to import)", "err": true, "stdout": "", "note": "циклічний імпорт: `circ_a` імпортує `circ_b`, а той — ще недовантажений `circ_a`, у якому `A` поки немає. Порада перейменувати файл тут хибна: розірвіть цикл або винесіть спільне в третій модуль"}]}, {"key": "package", "label": "package", "kind": "api", "title": "Пакети та __main__", "tagline": "Пакет — тека з модулями. `__init__.py` виконується при імпорті пакета й визначає його публічний API, а `__name__` підказує файлу, чи його запустили, чи імпортували.", "chips": ["__init__.py", "__all__", "if __name__ == \"__main__\":", "from .utils import slug", "python -m app", "__main__.py"], "imp": "", "files": [{"name": "app/__init__.py", "code": "# порожній файл"}, {"name": "app/utils.py", "code": "def slug(text):\n    return \"-\".join(text.lower().split())"}, {"name": "app/core.py", "code": "from .utils import slug\n\n\ndef run():\n    print(slug(\"Hello Python World\"))\n\n\nif __name__ == \"__main__\":\n    run()"}, {"name": "app/__main__.py", "code": "from .core import run\n\nrun()"}, {"name": "plugins/hello.py", "code": "NAME = \"hello-plugin\""}], "methodsTitle": "Як це працює", "props": [{"t": "__init__.py", "d": "Позначає теку як пакет і виконується при першому `import` пакета. Порожній файл — нормально. У ньому зручно реекспортувати головне: `from .circle import area`."}, {"t": "__all__", "d": "Список імен, які віддає `from pkg import *`. Документує публічний API. На явний `from pkg.mod import name` не впливає."}, {"t": "__name__ == \"__main__\"", "d": "Під час запуску файлу `__name__` дорівнює `\"__main__\"`, під час імпорту — назві модуля. Код під цією умовою виконується лише при запуску."}, {"t": "Відносні імпорти", "d": "`from .utils import slug` — з тієї ж теки пакета, `from ..pkg import x` — на рівень вище. Працюють лише всередині пакета: файл треба запускати через `python -m`."}], "methods": [{"ex": "__name__", "out": "'__main__'", "err": false, "stdout": "", "note": "", "group": "__name__", "name": "__name__ у скрипті", "sig": "__name__ == \"__main__\"", "desc": "У файлі, який запустили, `__name__` — це `\"__main__\"`."}, {"ex": "import subprocess, sys\nr = subprocess.run([sys.executable, \"greet.py\"], capture_output=True, text=True)\nprint(r.stdout)", "out": "", "err": false, "stdout": "greet: виконується, __name__ = '__main__'\nПривіт, світ!\n\n", "note": "", "group": "__name__", "name": "python greet.py", "sig": "python file.py", "desc": "Запуск файлу: умова `if __name__ == \"__main__\"` спрацьовує."}, {"ex": "import greet\ngreet.hello(\"Олена\")", "out": "'Привіт, Олена!'", "err": false, "stdout": "greet: виконується, __name__ = 'greet'\n", "note": "", "group": "__name__", "name": "import greet", "sig": "import file", "desc": "Імпорт того самого файлу: `__name__` — це `\"greet\"`, блок під умовою не виконується."}, {"ex": "import shapes\nshapes.rect_area(2, 3)", "out": "6", "err": false, "stdout": "", "note": "", "group": "__init__.py і __all__", "name": "реекспорт", "sig": "pkg/__init__.py: from .mod import name", "desc": "`shapes/__init__.py` імпортує функції з підмодулів, тож вони доступні прямо з пакета."}, {"ex": "import shapes\nshapes.__all__", "out": "['circle_area', 'circumference', 'rect_area', 'perimeter']", "err": false, "stdout": "", "note": "", "group": "__init__.py і __all__", "name": "__all__", "sig": "__all__ = [\"name\", ...]", "desc": "Що потрапить у `from shapes import *`."}, {"ex": "from shapes import *\nsorted(n for n in dir() if not n.startswith(\"_\"))", "out": "['circle_area', 'circumference', 'perimeter', 'rect_area']", "err": false, "stdout": "", "note": "", "group": "__init__.py і __all__", "name": "результат *", "sig": "from pkg import *", "desc": "Отримали рівно імена з `__all__`."}, {"ex": "from app import core\ncore.run()", "out": "", "err": false, "stdout": "hello-python-world\n", "note": "", "group": "Відносні імпорти", "name": "from .mod import x", "sig": "from .module import name", "desc": "`app/core.py` бере `slug` із сусіднього `app/utils.py`."}, {"ex": "import subprocess, sys\nr = subprocess.run([sys.executable, \"-m\", \"app.core\"], capture_output=True, text=True)\nr.stdout", "out": "'hello-python-world\\n'", "err": false, "stdout": "", "note": "", "group": "Відносні імпорти", "name": "python -m pkg.mod", "sig": "python -m package.module", "desc": "Запуск модуля пакета як скрипта: відносні імпорти працюють."}, {"ex": "import subprocess, sys\nr = subprocess.run([sys.executable, \"-m\", \"app\"], capture_output=True, text=True)\nr.stdout", "out": "'hello-python-world\\n'", "err": false, "stdout": "", "note": "", "group": "Відносні імпорти", "name": "python -m pkg", "sig": "package/__main__.py", "desc": "Запуск пакета: Python виконує його `__main__.py`."}, {"ex": "import app.core\napp.core.__name__, app.core.__package__", "out": "('app.core', 'app')", "err": false, "stdout": "", "note": "", "group": "Атрибути пакета", "name": "__package__", "sig": "module.__package__", "desc": "Пакет, до якого належить модуль. Від нього рахуються відносні імпорти."}, {"ex": "import shapes\nshapes.__path__", "out": "['/…/project/shapes']", "err": false, "stdout": "", "note": "", "group": "Атрибути пакета", "name": "__path__", "sig": "package.__path__", "desc": "Є лише в пакетів: теки, де шукати підмодулі."}, {"ex": "import shapes\nshapes.__file__", "out": "'/…/project/shapes/__init__.py'", "err": false, "stdout": "", "note": "", "group": "Атрибути пакета", "name": "__file__ пакета", "sig": "package.__file__", "desc": "Для пакета — шлях до його `__init__.py`."}], "ops": [{"ex": "import subprocess, sys\nr = subprocess.run([sys.executable, \"app/core.py\"], capture_output=True, text=True)\nr.stderr.splitlines()[-1]", "out": "'ImportError: attempted relative import with no known parent package'", "err": false, "stdout": "", "note": "файл із відносним імпортом запустили напряму. Правильно: `python -m app.core`"}, {"ex": "import app\napp.core", "out": "AttributeError: module 'app' has no attribute 'core'", "err": true, "stdout": "", "note": "`import app` не підтягує підмодулі: потрібен `import app.core` або імпорт в `__init__.py`"}, {"ex": "import app.core\napp.core.run()", "out": "", "err": false, "stdout": "hello-python-world\n", "note": "після явного імпорту підмодуль став атрибутом пакета"}, {"ex": "import plugins.hello\nplugins.hello.NAME, plugins.__file__", "out": "('hello-plugin', None)", "err": false, "stdout": "", "note": "тека без `__init__.py` — namespace-пакет: імпортується, але `__file__` немає. Краще додати `__init__.py`"}, {"ex": "import shapes\nshapes.rectangle._validate(0, 1)", "out": "ValueError: dimensions must be positive", "err": true, "stdout": "", "note": "`_validate` доступна через пакет: підкреслення лише просить не чіпати"}]}, {"key": "pip", "label": "pip", "kind": "table", "plain": true, "sep": true, "title": "pip і PyPI", "tagline": "**pip** встановлює сторонні пакети з **PyPI** ([pypi.org](https://pypi.org)) — публічного реєстру Python-пакетів. Пакет потрапляє в `site-packages` того Python, яким запущено pip.", "imp": "", "tableTitle": "Команди pip", "tableSub": "виконуються в терміналі, не в Python", "cols": ["Команда", "Що робить", "Приклад", "Примітка"], "groups": [{"name": "Встановлення", "rows": [{"code": "install", "desc": "Встановити останню версію разом із залежностями.", "ex": "pip install requests", "out": "Надійніше: `python -m pip install requests` — точно той pip, що належить вашому `python`.", "err": false}, {"code": "install ==", "desc": "Конкретна версія.", "ex": "pip install requests==2.31.0", "out": "Специфікатори версій — у групі нижче.", "err": false}, {"code": "install -U", "desc": "Оновити пакет до останньої версії.", "ex": "pip install -U rich", "out": "`-U` = `--upgrade`. Оновити сам pip: `python -m pip install -U pip`.", "err": false}, {"code": "install -r", "desc": "Встановити все зі списку залежностей.", "ex": "pip install -r requirements.txt", "out": "Так відтворюють середовище проєкту на іншому комп'ютері.", "err": false}, {"code": "install -e .", "desc": "Встановити свій пакет із поточної теки в режимі редагування.", "ex": "pip install -e .", "out": "Зміни в коді діють одразу, без перевстановлення. Див. вкладку PyPI.", "err": false}, {"code": "--index-url", "desc": "Встановити з іншого індексу, наприклад TestPyPI.", "ex": "pip install --index-url https://test.pypi.org/simple/ moskali", "out": "Залежностей на TestPyPI часто немає: додайте `--extra-index-url https://pypi.org/simple/`.", "err": false}]}, {"name": "Інформація", "rows": [{"code": "list", "desc": "Усі встановлені пакети з версіями.", "ex": "pip list", "out": "`pip list --outdated` — лише ті, для яких є новіші версії.", "err": false}, {"code": "show", "desc": "Опис пакета: версія, автор, де лежить, від чого залежить.", "ex": "pip show rich", "out": "Рядок `Requires:` — його залежності, `Required-by:` — хто залежить від нього.", "err": false}, {"code": "freeze", "desc": "Встановлені пакети у форматі `requirements.txt`.", "ex": "pip freeze > requirements.txt", "out": "Потрапляють і транзитивні залежності. Запускайте в venv, інакше збережете все з системи.", "err": false}, {"code": "check", "desc": "Чи сумісні версії встановлених залежностей.", "ex": "pip check", "out": "`No broken requirements found.` — усе гаразд.", "err": false}, {"code": "--version", "desc": "Версія pip і Python, якому він належить.", "ex": "pip --version", "out": "Перший крок, коли «встановив, а import не бачить».", "err": false}]}, {"name": "Видалення", "rows": [{"code": "uninstall", "desc": "Видалити пакет.", "ex": "pip uninstall requests", "out": "Залежності, які він підтягнув, лишаються.", "err": false}, {"code": "uninstall -y", "desc": "Без запитання про підтвердження.", "ex": "pip uninstall -y requests", "out": "Зручно в скриптах.", "err": false}]}, {"name": "Специфікатори версій", "rows": [{"code": "==", "desc": "Рівно ця версія.", "ex": "requests==2.31.0", "out": "Для повного відтворення середовища.", "err": false}, {"code": ">=", "desc": "Не нижче.", "ex": "rich>=13.0", "out": "Так задано залежності в `moskali/setup.cfg`.", "err": false}, {"code": ">=,<", "desc": "Діапазон.", "ex": "pip install \"requests>=2.31,<3\"", "out": "У zsh/bash беріть у лапки: інакше `<` і `>` — перенаправлення.", "err": false}, {"code": "~=", "desc": "Сумісний випуск: `~=1.4` означає `>=1.4, ==1.*`.", "ex": "plotext~=5.2", "out": "Дозволяє оновлення, які не повинні ламати API.", "err": false}, {"code": "!=", "desc": "Будь-яка, крім цієї.", "ex": "urllib3!=2.0.0", "out": "Обійти версію з відомим багом.", "err": false}]}, {"name": "Альтернатива", "rows": [{"code": "uv", "desc": "Швидкий менеджер пакетів і venv (окремий інструмент від Astral).", "ex": "uv venv\nuv pip install rich", "out": "Команди майже як у pip. Встановлюється окремо: [docs.astral.sh/uv](https://docs.astral.sh/uv/).", "err": false}]}], "notes": ["pip ставить пакет у той Python, якому належить. Якщо `pip install` пройшов, а `import` дає `ModuleNotFoundError` — ви запускаєте інший інтерпретатор. Порівняйте `pip --version` і `python -c \"import sys; print(sys.executable)\"`.", "Назва на PyPI і назва для `import` можуть відрізнятися: `pip install python-dotenv` → `import dotenv`, `pip install pillow` → `import PIL`, `pip install beautifulsoup4` → `import bs4`.", "На macOS і Linux команди часто звуться `python3` і `pip3`. Усередині активованого venv вистачає `python` і `pip`.", "Встановлюйте пакети у віртуальне середовище, а не в системний Python (див. вкладку venv)."], "sections": [{"name": "Перевірка з Python", "cells": [{"ex": "from importlib.metadata import version\nversion(\"pip\")", "out": "'26.0.1'", "err": false, "stdout": "", "note": "версія встановленого пакета з коду"}, {"ex": "from importlib.metadata import version\nversion(\"rich\")", "out": "PackageNotFoundError: No package metadata was found for rich", "err": true, "stdout": "", "note": "пакет не встановлено в цей Python"}, {"ex": "import importlib.util\nimportlib.util.find_spec(\"rich\") is None", "out": "True", "err": false, "stdout": "", "note": "перевірити наявність пакета без спроби імпорту"}]}]}, {"key": "venv", "label": "venv", "kind": "table", "plain": true, "title": "Віртуальні середовища", "tagline": "Окрема копія середовища Python для одного проєкту: свій `python`, свій `pip` і своя тека `site-packages`. Пакети одного проєкту не заважають іншим.", "imp": "", "tableTitle": "Робота з venv", "tableSub": "команди терміналу", "cols": ["Дія", "Що робить", "Команда", "Примітка"], "groups": [{"name": "Створення", "rows": [{"code": "створити", "desc": "Створює теку `.venv` із середовищем.", "ex": "python -m venv .venv", "out": "macOS/Linux: `python3 -m venv .venv`. Windows: `py -m venv .venv`.", "err": false}, {"code": "назва теки", "desc": "Найпоширеніші назви — `.venv` і `venv`.", "ex": ".venv/", "out": "`.env` краще не брати: так зазвичай називають файл зі змінними середовища для `python-dotenv`.", "err": false}]}, {"name": "Активація", "rows": [{"code": "macOS / Linux", "desc": "Активує середовище в поточному терміналі.", "ex": "source .venv/bin/activate", "out": "На початку рядка терміналу з'явиться `(.venv)`.", "err": false}, {"code": "Windows cmd", "desc": "Те саме для командного рядка.", "ex": ".venv\\Scripts\\activate.bat", "out": "На Windows теки `bin` немає, замість неї `Scripts`.", "err": false}, {"code": "PowerShell", "desc": "Те саме для PowerShell.", "ex": ".venv\\Scripts\\Activate.ps1", "out": "Якщо скрипти заблоковано: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.", "err": false}, {"code": "deactivate", "desc": "Повертає системний Python.", "ex": "deactivate", "out": "Однаково на всіх системах.", "err": false}, {"code": "перевірити", "desc": "Який `python` зараз активний.", "ex": "which python\nwhere python", "out": "`which` — macOS/Linux, `where` — Windows. Шлях має вести в `.venv`.", "err": false}]}, {"name": "Типовий цикл", "rows": [{"code": "новий проєкт", "desc": "Середовище, пакети, список залежностей.", "ex": "python -m venv .venv\nsource .venv/bin/activate\npip install rich\npip freeze > requirements.txt", "out": "`requirements.txt` комітять у git, а `.venv` — ні.", "err": false}, {"code": "чужий проєкт", "desc": "Відтворити середовище з репозиторію.", "ex": "python -m venv .venv\nsource .venv/bin/activate\npip install -r requirements.txt", "out": "Те саме після клонування свого проєкту на новий комп'ютер.", "err": false}, {"code": ".gitignore", "desc": "Не комітити середовище.", "ex": ".venv/", "out": "Тека важить десятки мегабайтів і прив'язана до вашої ОС.", "err": false}, {"code": "видалити", "desc": "Середовище — просто тека.", "ex": "rm -rf .venv", "out": "Зламалося — видаліть і створіть заново з `requirements.txt`.", "err": false}, {"code": "VS Code", "desc": "Обрати інтерпретатор проєкту.", "ex": "Python: Select Interpreter", "out": "Команда з палітри (Cmd/Ctrl+Shift+P). Тоді термінал VS Code активує `.venv` сам.", "err": false}]}, {"name": "Що всередині", "rows": [{"code": "bin/ (Scripts/)", "desc": "`python`, `pip`, `activate` і консольні команди встановлених пакетів.", "ex": ".venv/bin/python", "out": "Сюди ж потрапляє команда `moskali` після `pip install -e .`.", "err": false}, {"code": "lib/…/site-packages/", "desc": "Встановлені пакети.", "ex": ".venv/lib/python3.14/site-packages/", "out": "На Windows: `.venv\\Lib\\site-packages\\`.", "err": false}, {"code": "pyvenv.cfg", "desc": "Вказує, на якому Python створено середовище.", "ex": "home = /usr/local/bin", "out": "Тому venv не можна переносити між комп'ютерами — тільки створювати заново.", "err": false}]}], "notes": ["Активація лише змінює `PATH` у поточному терміналі. Без неї можна запускати напряму: `.venv/bin/python main.py`.", "Кожен новий термінал треба активувати знову.", "Середовище прив'язане до версії Python, на якій його створено. Оновили Python — створіть venv заново."], "sections": [{"name": "Перевірка з Python", "cells": [{"ex": "import sys\nsys.prefix != sys.base_prefix", "out": "False", "err": false, "stdout": "", "note": "`True` — код працює у venv. Тут `False`: приклади запущено без venv"}, {"ex": "import sys\nsys.version_info[:2]", "out": "(3, 14)", "err": false, "stdout": "", "note": "версія Python, на якій працює код"}]}]}, {"key": "pypi", "label": "PyPI", "kind": "table", "plain": true, "title": "Свій пакет і публікація", "tagline": "Щоб інші могли поставити ваш код через `pip install`, проєкт оформлюють як пакет: метадані, залежності, консольна команда. Приклади — з `moskali/` цього модуля.", "imp": "", "tableTitle": "Від теки з кодом до PyPI", "tableSub": "у порядку виконання", "cols": ["Що", "Навіщо", "Приклад", "Примітка"], "groups": [{"name": "Структура проєкту", "rows": [{"code": "тека проєкту", "desc": "Зовнішня тека — проєкт, внутрішня з тією самою назвою — пакет.", "ex": "moskali/\n├── pyproject.toml\n├── setup.cfg\n├── README.md\n└── moskali/\n    ├── __init__.py\n    ├── cli.py\n    └── moskali.json", "out": "Додайте `LICENSE` і `tests/`. DRY — не копіюйте код, виносьте в модулі. KISS — не ускладнюйте.", "err": false}]}, {"name": "pyproject.toml + setup.cfg (як у moskali)", "rows": [{"code": "pyproject.toml", "desc": "Каже pip, чим збирати пакет.", "ex": "[build-system]\nrequires = [\"setuptools\", \"wheel\"]\nbuild-backend = \"setuptools.build_meta\"", "out": "Обов'язковий файл для сучасних інструментів.", "err": false}, {"code": "[metadata]", "desc": "Назва, версія, опис, автор, ліцензія.", "ex": "[metadata]\nname = moskali\nversion = 6.0.0\ndescription = Console tool to visualize Russian military losses data\nlong_description = file: README.md\nlong_description_content_type = text/markdown\nlicense = MIT", "out": "`name` має бути унікальним на PyPI. README стає сторінкою пакета на сайті.", "err": false}, {"code": "[options]", "desc": "Які пакети включити і від чого залежить.", "ex": "[options]\npackages = find_namespace:\ninstall_requires =\n    rich>=13.0\n    plotext>=5.0,<6\ninclude_package_data = true", "out": "`install_requires` pip поставить разом із вашим пакетом.", "err": false}, {"code": "package_data", "desc": "Не-Python файли всередині пакета.", "ex": "[options.package_data]\n* = *.json", "out": "Без цього `moskali.json` не потрапить у збірку.", "err": false}, {"code": "entry_points", "desc": "Створює консольну команду.", "ex": "[options.entry_points]\nconsole_scripts =\n    moskali = moskali.cli:main", "out": "Формат: `команда = пакет.модуль:функція`. Після встановлення в терміналі з'являється `moskali`.", "err": false}]}, {"name": "Сучасний варіант: усе в pyproject.toml", "rows": [{"code": "[project]", "desc": "Ті самі метадані за стандартом PEP 621, без `setup.cfg`.", "ex": "[build-system]\nrequires = [\"setuptools>=61\"]\nbuild-backend = \"setuptools.build_meta\"\n\n[project]\nname = \"moskali\"\nversion = \"6.0.0\"\ndependencies = [\"rich>=13.0\", \"plotext>=5.0,<6\"]\n\n[project.scripts]\nmoskali = \"moskali.cli:main\"", "out": "Рекомендований формат для нових проєктів. `setup.cfg` і `setup.py` досі працюють і часто трапляються.", "err": false}, {"code": "setup.py", "desc": "Найстаріший спосіб: метадані в Python-коді.", "ex": "from setuptools import setup, find_namespace_packages\n\nsetup(\n    name=\"moskali\",\n    version=\"6.0.0\",\n    packages=find_namespace_packages(),\n    install_requires=[\"rich>=13.0\"],\n    entry_points={\"console_scripts\": [\"moskali = moskali.cli:main\"]},\n)", "out": "Знадобиться, щоб читати чужі проєкти.", "err": false}]}, {"name": "Встановлення і збірка", "rows": [{"code": "pip install -e .", "desc": "Встановити пакет локально в режимі редагування.", "ex": "pip install -e .", "out": "Запускати в теці з `pyproject.toml`. Команда `moskali` одразу доступна.", "err": false}, {"code": "python -m build", "desc": "Зібрати файли для публікації.", "ex": "pip install build\npython -m build", "out": "У `dist/` з'являться `.tar.gz` (вихідний код) і `.whl` (wheel: готовий до встановлення архів).", "err": false}]}, {"name": "Публікація", "rows": [{"code": "twine check", "desc": "Перевірити збірку перед завантаженням.", "ex": "pip install twine\ntwine check dist/*", "out": "Ловить, наприклад, README, який PyPI не зможе показати.", "err": false}, {"code": "TestPyPI", "desc": "Пісочниця: спершу публікуйте сюди.", "ex": "twine upload --repository testpypi dist/*", "out": "Окремий акаунт на [test.pypi.org](https://test.pypi.org).", "err": false}, {"code": "PyPI", "desc": "Справжня публікація.", "ex": "twine upload dist/*", "out": "Логін — `__token__`, пароль — API-токен з налаштувань акаунта (`pypi-...`).", "err": false}, {"code": "нова версія", "desc": "Кожна публікація — нова версія.", "ex": "version = 6.0.1", "out": "Ту саму версію повторно завантажити не можна. Підніміть `version`, видаліть старий `dist/` і зберіть заново.", "err": false}, {"code": "встановити", "desc": "Перевірити, що пакет ставиться.", "ex": "pip install moskali", "out": "Краще в новому чистому venv.", "err": false}]}], "notes": ["Порядок: `pip install -e .` і тестування → `python -m build` → `twine check` → TestPyPI → PyPI.", "API-токен — секрет. Не комітьте його й не вставляйте в код; якщо він десь засвітився — відкличте й створіть новий.", "Теки `dist/`, `build/` і `*.egg-info/` генеруються під час збірки: додайте їх у `.gitignore`.", "Покроковий приклад зі справжнім виводом — на вкладці **moskali**."], "sections": []}, {"key": "moskali", "label": "moskali", "kind": "steps", "title": "Від теки з кодом до pip install", "tagline": "Покроково перетворюємо `moskali/` на пакет: збираємо локально, перевіряємо, ведемо версії й публікуємо на TestPyPI та PyPI. Вивід команд — справжній запуск на копії проєкту (шляхи скорочено).", "chips": ["setup.cfg", "pip install -e .", "moskali --help", "python -m build", "dist/*.whl", "version", "twine check", "TestPyPI → PyPI"], "steps": [{"title": "Пакет усередині проєкту", "text": "Зовнішня тека `moskali/` — це **проєкт**: конфігурація, README, ліцензія. Внутрішня `moskali/moskali/` — **пакет**, який після встановлення опиниться в `site-packages`. Тому модулі пакета імпортують один одного відносно (`from .loader import CATEGORIES` у `stats.py`): після встановлення сусідніх файлів у поточній теці вже не буде.", "cells": [{"file": "структура", "ex": "moskali/                ← проєкт: тут запускаємо всі команди\n├── pyproject.toml\n├── setup.cfg\n├── README.md\n├── LICENSE             ← варто додати (у setup.cfg вказано MIT)\n└── moskali/            ← пакет: саме він потрапить у site-packages\n    ├── cli.py          ← main() для команди moskali\n    ├── loader.py\n    ├── render.py\n    ├── stats.py\n    └── moskali.json    ← дані, не .py", "stdout": "", "out": "", "err": false, "note": ""}]}, {"title": "pyproject.toml: чим збирати", "text": "Перше, що читають pip і `build`: який інструмент збирає пакет. Тут — `setuptools`, він сам підтягнеться в тимчасове середовище збірки.", "cells": [{"file": "pyproject.toml", "ex": "[build-system]\nrequires = [\"setuptools\", \"wheel\"]\nbuild-backend = \"setuptools.build_meta\"", "stdout": "", "out": "", "err": false, "note": ""}]}, {"title": "setup.cfg: опис пакета", "text": "Метадані та вміст пакета. Головне:\n\n`name` — назва на PyPI, має бути унікальною. **`moskali` на PyPI вже зайнято** (це пакет курсу, там є версії 0.1.0, 1–5 і 6.0.0), тож для своєї публікації змініть `name`, наприклад на `moskali-ivanenko`. `import moskali` і команда `moskali` від цього не зміняться.\n\n`version` — версія пакета. Перед кожною публікацією її піднімають тут (крок 9).\n\n`install_requires` — залежності, які pip поставить разом із пакетом. `package_data` — не-Python файли (наш `moskali.json`). `entry_points` — консольна команда.", "cells": [{"file": "setup.cfg", "ex": "[metadata]\nname = moskali\nversion = 7.0.0\ndescription = Console tool to visualize Russian military losses data\nlong_description = file: README.md\nlong_description_content_type = text/markdown\nurl = https://github.com/andrusoleg/moskali\nauthor = Oleh Andrus\nauthor_email = andrusoleg123@gmail.com\nlicense = MIT\nclassifiers =\n    Programming Language :: Python :: 3\n    License :: OSI Approved :: MIT License\n    Environment :: Console\n    Topic :: Utilities\n\n[options]\npackages = find_namespace:\ninstall_requires =\n    rich>=13.0\n    plotext>=5.0,<6\ninclude_package_data = true\n\n[options.package_data]\n* = *.json\n\n[options.entry_points]\nconsole_scripts =\n    moskali = moskali.cli:main\n\n[options.packages.find]\nwhere = .", "stdout": "", "out": "", "err": false, "note": ""}]}, {"title": "Команда в терміналі: entry_points", "text": "Рядок `moskali = moskali.cli:main` означає: створити команду `moskali`, яка імпортує модуль `moskali.cli` і викликає `main()`. pip генерує для неї маленький скрипт у `bin/` середовища.", "cells": [{"file": "moskali/cli.py (скорочено)", "ex": "def main():\n    parser = argparse.ArgumentParser(\n        prog=\"moskali\",\n        description=\"Visualize Russian military losses data\",\n    )\n    ...\n    args = parser.parse_args()\n    ...", "stdout": "", "out": "", "err": false, "note": "функція без аргументів: аргументи командного рядка читає `argparse`"}, {"file": ".venv/bin/moskali (створив pip)", "ex": "#!/…/main/moskali/.venv/bin/python\n# -*- coding: utf-8 -*-\nimport sys\nfrom moskali.cli import main\nif __name__ == \"__main__\":\n    if sys.argv[0].endswith(\"-script.pyw\"):\n        sys.argv[0] = sys.argv[0][:-11]\n    elif sys.argv[0].endswith(\".exe\"):\n        sys.argv[0] = sys.argv[0][:-4]\n    sys.exit(main())", "stdout": "", "out": "", "err": false, "note": "цей файл ніхто не пише вручну"}]}, {"title": "Розробка: pip install -e .", "text": "Встановлюємо пакет у venv проєкту в режимі редагування: pip не копіює код, а посилається на вашу теку. Зміни в `.py` діють одразу, без перевстановлення. Перевстановлювати треба лише після змін у `setup.cfg` (залежності, entry_points).", "cells": [{"file": "термінал", "ex": "python -m venv .venv\nsource .venv/bin/activate\npip install -e .\nmoskali --help", "stdout": "usage: moskali [-h] COMMAND ...\n\nVisualize Russian military losses data\n\npositional arguments:\n  COMMAND\n    summary     Latest cumulative snapshot with bar chart\n    categories  List all available categories\n    daily       Daily losses table\n    trend       ASCII bar chart for one category over time\n    monthly     Total losses per calendar month\n    period      Total losses over a period\n    plot        Terminal bar chart for one category over time\n\noptions:\n  -h, --help    show this help message and exit\n", "out": "", "err": false, "note": ""}]}, {"title": "Перевірка: чи працює moskali", "text": "Після `pip install -e .` пройдіться по командах пакета. Так ви перевірите все одразу: пакет встановлено, `entry_points` створив команду, залежності (`rich`, `plotext`) на місці, а `moskali.json` знаходиться.\n\nУсі команди запускайте з активованим venv. Якщо термінал каже `command not found: moskali`, середовище не активоване: `source .venv/bin/activate`.", "cells": [{"file": "термінал", "ex": "pip show moskali\nwhich moskali            # Windows: where moskali", "stdout": "Name: moskali\nVersion: 6.0.0\nLocation: …/moskali/.venv/lib/python3.14/site-packages\nEditable project location: …/moskali\nRequires: plotext, rich\n…/moskali/.venv/bin/moskali\n", "out": "", "err": false, "note": "`Editable project location` означає, що встановлено через `-e .`. `which` показує скрипт, який створив pip з `entry_points`"}, {"file": "термінал", "ex": "moskali summary", "stdout": "Russian Military Losses — Cumulative as of 2026-02-19\n\n  Category               Chart                              Total\n ─────────────────────────────────────────────────────────────────\n  Personnel              ████████████████████████████   1,256,910\n  Tanks                  ██░░░░░░░░░░░░░░░░░░░░░░░░░░      11,682\n  Armored Vehicles       █████░░░░░░░░░░░░░░░░░░░░░░░      24,054\n  Artillery              ████████░░░░░░░░░░░░░░░░░░░░      37,384\n  MLRS                   ░░░░░░░░░░░░░░░░░░░░░░░░░░░░       1,649\n", "out": "", "err": false, "note": "накопичені втрати (вивід скорочено)", "wide": true}, {"file": "термінал", "ex": "moskali daily --days 3", "stdout": "Daily Losses\n\n  Category               02/19   02/18   02/17\n ──────────────────────────────────────────────\n  Personnel                830     740     890\n  Tanks                      1       3       2\n  Armored Vehicles           3       6       3\n  Artillery                 21      40       4\n  MLRS                       1       0       0\n", "out": "", "err": false, "note": "", "wide": true}, {"file": "термінал", "ex": "moskali trend drone --days 5", "stdout": "Trend: UAVs/Drones  (5 days)\n\n  02/19    ███████░░░░░░░░░░░░░░░░░░░░░░░     +406\n  02/18    ██████████████████████████████   +1,851\n  02/17    ██████████░░░░░░░░░░░░░░░░░░░░     +614\n  02/16    ██████████░░░░░░░░░░░░░░░░░░░░     +601\n  02/15    █████████░░░░░░░░░░░░░░░░░░░░░     +552\n", "out": "", "err": false, "note": "досить частини англійської назви категорії: `drone` → `UAVs/Drones`", "wide": true}, {"file": "термінал", "ex": "moskali monthly --months 2", "stdout": "Monthly Losses\n\n  Category               2026-01   2026-02\n ──────────────────────────────────────────\n  Personnel               31,680    17,320\n  Tanks                      138        63\n  Armored Vehicles           132        77\n  Artillery                1,126       616\n  MLRS                        46        17\n", "out": "", "err": false, "note": ""}, {"file": "термінал", "ex": "moskali period --days 7", "stdout": "Losses  2026-02-12 → 2026-02-19\n\n  Category               Chart                           Total\n ──────────────────────────────────────────────────────────────\n  Personnel              ████████████████████████████   +6,760\n  Tanks                  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░      +20\n  Armored Vehicles       ░░░░░░░░░░░░░░░░░░░░░░░░░░░░      +29\n  Artillery              █░░░░░░░░░░░░░░░░░░░░░░░░░░░     +171\n  MLRS                   ░░░░░░░░░░░░░░░░░░░░░░░░░░░░       +8\n", "out": "", "err": false, "note": "", "wide": true}, {"file": "термінал", "ex": "moskali plot tanks --days 14", "stdout": "", "out": "", "err": false, "note": "кольоровий стовпчиковий графік від `plotext` на всю ширину термінала"}, {"file": "якщо встановився plotext 6", "ex": "moskali plot tanks --days 14", "stdout": "", "out": "AttributeError: module 'plotext' has no attribute 'clear_figure'", "err": true, "note": "у plotext 6 змінився API. Тому в `setup.cfg` залежність обмежено: `plotext>=5.0,<6`"}, {"file": "термінал", "ex": "moskali trend xyz", "stdout": "Unknown category 'xyz'. Run `moskali categories` for a list.\n", "out": "", "err": false, "note": "невідома категорія — зрозуміле повідомлення, а не traceback"}, {"file": "термінал: запуск не з тієї теки", "ex": "cd moskali/moskali     # тека з кодом, а не проєкт\npip install -e .", "stdout": "", "out": "ERROR: …/moskali/moskali does not appear to be a Python project: neither 'setup.py' nor 'pyproject.toml' found.", "err": true, "note": "pip шукає `pyproject.toml` або `setup.py` у вказаній теці. Запускайте з теки проєкту, де лежать `pyproject.toml` і `setup.cfg`"}]}, {"title": "Збірка: python -m build", "text": "Збираємо файли, які завантажуються на PyPI. З'являються два файли в `dist/`: **sdist** `.tar.gz` (вихідний код) і **wheel** `.whl` (zip-архів, готовий до встановлення без збірки). Назва wheel: `назва-версія-python-ABI-платформа`; `py3-none-any` — чистий Python 3, підходить для будь-якої ОС.", "cells": [{"file": "термінал", "ex": "pip install build\npython -m build", "stdout": "Successfully built moskali-6.0.0.tar.gz and moskali-6.0.0-py3-none-any.whl", "out": "", "err": false, "note": ""}, {"file": "термінал", "ex": "ls dist/", "stdout": "moskali-6.0.0-py3-none-any.whl\nmoskali-6.0.0.tar.gz\n", "out": "", "err": false, "note": ""}, {"file": "термінал", "ex": "python -m zipfile -l dist/moskali-6.0.0-py3-none-any.whl", "stdout": "File Name                                             Modified             Size\nmoskali/__init__.py                            2026-10-29 13:23:38           85\nmoskali/cli.py                                 2026-10-13 14:09:38         3515\nmoskali/loader.py                              2026-10-13 14:09:38         1542\nmoskali/moskali.json                           2026-10-13 14:09:38       915293\nmoskali/render.py                              2026-10-13 14:09:38         4616\nmoskali/stats.py                               2026-10-13 14:09:38         1507\nmoskali-6.0.0.dist-info/METADATA               2026-10-29 13:23:50         2285\nmoskali-6.0.0.dist-info/WHEEL                  2026-10-29 13:23:50           91\nmoskali-6.0.0.dist-info/entry_points.txt       2026-10-29 13:23:50           45\nmoskali-6.0.0.dist-info/top_level.txt          2026-10-29 13:23:50            8\nmoskali-6.0.0.dist-info/RECORD                 2026-10-29 13:23:50          837\n", "out": "", "err": false, "note": "усередині лише пакет і метадані; `moskali.json` на місці завдяки `package_data`"}]}, {"title": "Перевірка wheel у чистому середовищі", "text": "`pip install -e .` бачить усю вашу теку, тому може приховати проблеми. Перед публікацією встановіть саме зібраний wheel у новий venv: так його отримає користувач.", "cells": [{"file": "термінал", "ex": "python -m venv /tmp/try\nsource /tmp/try/bin/activate\npip install dist/moskali-7.0.0-py3-none-any.whl\nmoskali categories", "stdout": "Available Categories\n                                                        \n    #   English             Ukrainian                   \n ────────────────────────────────────────────────────── \n    1   Personnel           Особовий склад              \n    2   Tanks               Танки                       \n    3   Armored Vehicles    ББМ                         \n    4   Artillery           Артилерійські системи       \n    5   MLRS                РСЗВ                        ", "out": "", "err": false, "note": ""}, {"file": "якщо прибрати package_data", "ex": "moskali summary", "stdout": "", "out": "FileNotFoundError: [Errno 2] No such file or directory: '…/site-packages/moskali/moskali.json'", "err": true, "note": "`moskali.json` не потрапив у wheel. Через `-e .` цього не видно: там файл лежить у вашій теці"}]}, {"title": "Версії", "text": "Версія — частина назви файлу, і PyPI **ніколи** не приймає ту саму версію вдруге, навіть якщо її видалити. Кожна публікація = нова версія. Зазвичай використовують семантичне версіонування `MAJOR.MINOR.PATCH`. Передрелізи (`a`, `b`, `rc`) pip ставить лише з `pip install --pre`.", "cells": [{"file": "як піднімати номер", "ex": "7.0.0 → 7.0.1      PATCH: виправили баг\n7.0.1 → 7.1.0      MINOR: нова команда, старе працює як раніше\n7.1.0 → 8.0.0      MAJOR: щось змінилося несумісно\n\n7.1.0a1 < 7.1.0b1 < 7.1.0rc1 < 7.1.0    передрелізи: alpha, beta, release candidate", "stdout": "", "out": "", "err": false, "note": ""}, {"file": "setup.cfg", "ex": "[metadata]\nname = moskali\nversion = 7.0.1", "stdout": "", "out": "", "err": false, "note": "версію змінюємо тут, перед кожною публікацією"}, {"file": "термінал", "ex": "rm -rf dist build *.egg-info\npython -m build\nls dist/", "stdout": "moskali-7.0.1-py3-none-any.whl\nmoskali-7.0.1.tar.gz\n", "out": "", "err": false, "note": "старий `dist/` видаляємо, щоб не завантажити стару версію ще раз"}, {"file": "термінал", "ex": "pip install dist/moskali-7.0.1-py3-none-any.whl\npip show moskali\npython -c \"from importlib.metadata import version; print(version('moskali'))\"", "stdout": "Name: moskali\nVersion: 7.0.1\n…\n7.0.1\n", "out": "", "err": false, "note": "версію встановленого пакета читаємо з його метаданих. `moskali.__version__` у цьому проєкті немає: `AttributeError`"}, {"file": "термінал", "ex": "git commit -am \"Release 7.0.1\"\ngit tag v7.0.1\ngit push --tags", "stdout": "", "out": "", "err": false, "note": "тег у git позначає, який саме код опубліковано"}]}, {"title": "Акаунти та API-токен", "text": "Зареєструйтеся на [pypi.org](https://pypi.org) і окремо на [test.pypi.org](https://test.pypi.org): це різні сайти з різними акаунтами. PyPI вимагає двофакторну автентифікацію. Далі в налаштуваннях акаунта створіть **API token** і збережіть його у `~/.pypirc`, щоб twine не питав щоразу.", "cells": [{"file": "~/.pypirc", "ex": "[pypi]\n  username = __token__\n  password = pypi-AgEIcHlwaS5vcmc...\n\n[testpypi]\n  username = __token__\n  password = pypi-AgENdGVzdC5weXBp...", "stdout": "", "out": "", "err": false, "note": "логін завжди `__token__`, пароль — токен повністю, разом із `pypi-`. Захистіть файл: `chmod 600 ~/.pypirc`. Не комітьте його; якщо токен засвітився — відкличте й створіть новий"}]}, {"title": "Репетиція на TestPyPI", "text": "Спочатку перевіряємо збірку, потім завантажуємо в пісочницю й ставимо звідти, як звичайний користувач.", "cells": [{"file": "термінал", "ex": "pip install twine\ntwine check dist/*", "stdout": "Checking dist/moskali-6.0.0-py3-none-any.whl: PASSED\nChecking dist/moskali-6.0.0.tar.gz: PASSED\n", "out": "", "err": false, "note": "перевіряє метадані й те, що PyPI зможе показати README"}, {"file": "термінал", "ex": "twine upload --repository testpypi dist/*", "stdout": "", "out": "", "err": false, "note": "приклад без виводу: на TestPyPI ми не завантажували"}, {"file": "термінал", "ex": "pip install --index-url https://test.pypi.org/simple/ \\\n    --extra-index-url https://pypi.org/simple/ moskali-ivanenko", "stdout": "", "out": "", "err": false, "note": "`--extra-index-url`: залежностей `rich` і `plotext` на TestPyPI немає, pip візьме їх зі звичайного PyPI"}]}, {"title": "Публікація на PyPI", "text": "Те саме, але без `--repository`. Після завантаження пакет має сторінку `pypi.org/project/<назва>/`, а README стає її описом.", "cells": [{"file": "термінал", "ex": "twine upload dist/*", "stdout": "", "out": "", "err": false, "note": "приклад без виводу"}, {"file": "термінал", "ex": "pip install moskali-ivanenko\nmoskali summary", "stdout": "", "out": "", "err": false, "note": "на будь-якому комп'ютері з Python"}]}], "notes": ["Повний цикл випуску: змінили код → підняли `version` у `setup.cfg` → `rm -rf dist build *.egg-info` → `python -m build` → перевірили wheel у чистому venv → `twine check` → TestPyPI → PyPI → `git tag`.", "Завантаження відхилено, бо файл такої версії вже є — підніміть версію й зберіть заново.", "Відмова в доступі (403) — назва належить іншому акаунту або токен неправильний чи створений не на тому сайті (PyPI і TestPyPI мають різні токени).", "Після встановлення `ModuleNotFoundError` усередині вашого пакета — найчастіше в ньому абсолютний імпорт сусіднього модуля (`import loader`) замість `from . import loader`.", "Теки `dist/`, `build/`, `*.egg-info/` і `.venv/` додайте в `.gitignore`.", "`does not appear to be a Python project` — `pip install -e .` запущено не з тієї теки. Потрібна тека, де лежать `pyproject.toml` і `setup.cfg` (`module06/moskali`), а не внутрішня `moskali/moskali`.", "`command not found: moskali` — venv, у який ставили пакет, не активовано в цьому терміналі."]}, {"key": "libs", "label": "Бібліотеки", "kind": "table", "plain": true, "title": "Корисні пакети", "tagline": "Популярні пакети з PyPI, які варто знати, і кілька для розваги. Усі ставляться через `pip install`.", "imp": "", "tableTitle": "Що встановити", "tableSub": "назва для pip у примітці", "cols": ["Пакет", "Для чого", "Приклад", "Встановлення"], "groups": [{"name": "Корисні", "rows": [{"code": "requests", "desc": "HTTP-запити: найпростіший спосіб звернутися до API.", "ex": "import requests\nr = requests.get(\"https://api.github.com\")\nr.status_code, r.json()", "out": "`pip install requests`", "err": false}, {"code": "httpx", "desc": "Сучасний HTTP-клієнт, вміє async.", "ex": "import httpx\nhttpx.get(\"https://example.com\").text", "out": "`pip install httpx`", "err": false}, {"code": "rich", "desc": "Кольоровий текст, таблиці, прогрес-бари в терміналі.", "ex": "from rich import print\nprint(\"[bold green]Готово![/]\")", "out": "`pip install rich`. Приклади: `console_rich.py`, `utils.py`.", "err": false}, {"code": "typer", "desc": "CLI-застосунок з аргументів функції.", "ex": "import typer\n\ndef main(name: str):\n    print(f\"Привіт, {name}\")\n\ntyper.run(main)", "out": "`pip install typer`. У `moskali` той самий CLI зроблено вбудованим `argparse`.", "err": false}, {"code": "click", "desc": "CLI через декоратори.", "ex": "import click\n\n@click.command()\n@click.argument(\"name\")\ndef hello(name):\n    click.echo(f\"Привіт, {name}\")", "out": "`pip install click`", "err": false}, {"code": "pydantic", "desc": "Перевірка й перетворення даних за анотаціями типів.", "ex": "from pydantic import BaseModel\n\nclass User(BaseModel):\n    name: str\n    age: int\n\nUser(name=\"Олена\", age=\"25\").age  # 25", "out": "`pip install pydantic`", "err": false}, {"code": "faker", "desc": "Фейкові імена, адреси, email для тестів.", "ex": "from faker import Faker\nFaker(\"uk_UA\").name()", "out": "`pip install faker`", "err": false}, {"code": "python-dotenv", "desc": "Читає змінні з файлу `.env` у `os.environ`.", "ex": "import os\nfrom dotenv import load_dotenv\n\nload_dotenv()\nos.getenv(\"API_KEY\")", "out": "`pip install python-dotenv`, а імпорт — `dotenv`.", "err": false}, {"code": "loguru", "desc": "Логування без налаштувань.", "ex": "from loguru import logger\nlogger.info(\"Старт\")", "out": "`pip install loguru`", "err": false}, {"code": "tqdm", "desc": "Прогрес-бар для будь-якого циклу.", "ex": "from tqdm import tqdm\n\nfor item in tqdm(range(100)):\n    ...", "out": "`pip install tqdm`", "err": false}, {"code": "plotext", "desc": "Графіки прямо в терміналі.", "ex": "import plotext as plt\nplt.plot([1, 4, 2, 5])\nplt.show()", "out": "`pip install plotext`. Використано в `moskali`.", "err": false}, {"code": "pytest", "desc": "Тести: функції `test_*` з `assert`.", "ex": "def test_add():\n    assert 1 + 1 == 2", "out": "`pip install pytest`, запуск — команда `pytest`.", "err": false}]}, {"name": "Для розваги", "rows": [{"code": "cowsay", "desc": "Корова в терміналі каже ваш текст.", "ex": "import cowsay\ncowsay.cow(\"Python!\")", "out": "`pip install cowsay`", "err": false}, {"code": "pyfiglet", "desc": "Великі ASCII-літери.", "ex": "import pyfiglet\nprint(pyfiglet.figlet_format(\"Hi!\"))", "out": "`pip install pyfiglet`", "err": false}, {"code": "art", "desc": "ASCII-арт і текст різними шрифтами.", "ex": "import art\nart.tprint(\"GoIT\")", "out": "`pip install art`", "err": false}, {"code": "emoji", "desc": "Емодзі за назвою.", "ex": "import emoji\nemoji.emojize(\"Python :snake:\")", "out": "`pip install emoji`", "err": false}]}, {"name": "Пасхалки стандартної бібліотеки", "rows": [{"code": "this", "desc": "Друкує «Дзен Python».", "ex": "import this", "out": "Вбудовано, встановлювати не треба.", "err": false}, {"code": "antigravity", "desc": "Відкриває в браузері комікс xkcd 353 про Python.", "ex": "import antigravity", "out": "Вбудовано. `pip install antigravity` не потрібен.", "err": false}, {"code": "__future__", "desc": "Жарт про фігурні дужки.", "ex": "from __future__ import braces", "out": "Результат — нижче.", "err": false}]}], "notes": ["Перш ніж додавати залежність, подивіться на [pypi.org](https://pypi.org): дату останнього випуску, кількість завантажень, репозиторій. Покинутий пакет — ризик.", "Кожен пакет із цієї таблиці ставте у venv проєкту і додавайте в `requirements.txt`."], "sections": [{"name": "Справжні запуски", "cells": [{"ex": "import this", "out": "", "err": false, "stdout": "The Zen of Python, by Tim Peters\n\nBeautiful is better than ugly.\nExplicit is better than implicit.\nSimple is better than complex.\nComplex is better than complicated.\nFlat is better than nested.\nSparse is better than dense.\nReadability counts.\nSpecial cases aren't special enough to break the rules.\nAlthough practicality beats purity.\nErrors should never pass silently.\nUnless explicitly silenced.\nIn the face of ambiguity, refuse the temptation to guess.\nThere should be one-- and preferably only one --obvious way to do it.\nAlthough that way may not be obvious at first unless you're Dutch.\nNow is better than never.\nAlthough never is often better than *right* now.\nIf the implementation is hard to explain, it's a bad idea.\nIf the implementation is easy to explain, it may be a good idea.\nNamespaces are one honking great idea -- let's do more of those!\n", "note": "Дзен Python, PEP 20"}, {"ex": "from __future__ import braces", "out": "SyntaxError: not a chance (<unknown>, line 1)", "err": true, "stdout": "", "note": "фігурних дужок замість відступів не буде"}]}]}]};
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const md = s => esc(s).replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2">$1</a>').replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+
+const KW = new Set("False None True and as assert break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield".split(" "));
+const BI = new Set("abs all any bin bool chr dict divmod frozenset hash hex id int isinstance len list max min oct ord pow print range repr reversed round set sorted str sum tuple type".split(" "));
+function hl(code) {
+  const re = /(#[^\n]*)|([rbfRBF]{0,2}(?:'''[\s\S]*?'''|"""[\s\S]*?"""|'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"))|(\b\d[\d_]*(?:\.\d+)?\b)|([A-Za-z_][A-Za-z0-9_]*)/g;
+  let out = "", last = 0, m;
+  while ((m = re.exec(code))) {
+    out += esc(code.slice(last, m.index));
+    const [t, com, str, num, id] = m;
+    if (com) out += `<span class="tk-c">${esc(t)}</span>`;
+    else if (str) out += `<span class="tk-s">${esc(t)}</span>`;
+    else if (num) out += `<span class="tk-n">${esc(t)}</span>`;
+    else if (KW.has(id)) out += `<span class="tk-k">${esc(t)}</span>`;
+    else if (BI.has(id) && code[m.index - 1] !== ".") out += `<span class="tk-b">${esc(t)}</span>`;
+    else out += esc(t);
+    last = m.index + t.length;
+  }
+  return out + esc(code.slice(last));
+}
+function cell(item) {
+  return `<div class="cell${item.wide ? " wide" : ""}">
+    ${item.file ? `<div class="fname">${esc(item.file)}</div>` : ""}
+    <pre>${hl(item.ex)}</pre>
+    ${item.stdout ? `<div class="stdout">${esc(item.stdout.trimEnd())}</div>` : ""}
+    ${item.out ? `<div class="res${item.err ? " err" : ""}"><span>${item.err ? esc(item.out) : hl(item.out)}</span></div>` : ""}
+    ${item.note ? `<div class="note">${md(item.note)}</div>` : ""}
+  </div>`;
+}
+const impHtml = imp => !imp ? "" : `<div class="imp-l">Підготовка (виконано перед кожним прикладом)</div><div class="cell imp"><pre>${hl(imp)}</pre></div>`;
+
+const filesHtml = files => !files ? "" : `<div class="imp-l">Файли в теці project/</div><div class="ops files">${files.map(f => `<div class="cell"><div class="fname">${esc(f.name)}</div><pre>${hl(f.code)}</pre></div>`).join("")}</div>`;
+
+function methodsHtml(tab) {
+  let html = "", group = null;
+  for (const m of tab.methods) {
+    if (m.group && m.group !== group) { group = m.group; html += `<div class="m-group" data-g="${esc(group)}">${esc(group)}</div>`; }
+    html += `<div class="m-row" data-q="${esc((m.name + " " + m.desc + " " + m.sig).toLowerCase())}" data-g="${esc(m.group || "")}">
+      <div><div class="m-name">${esc(m.name)}</div><div class="m-sig">${esc(m.sig)}</div></div>
+      <div class="m-desc">${md(m.desc)}</div>
+      ${cell(m)}</div>`;
+  }
+  return html;
+}
+
+function buildApi(tab) {
+  return `
+    <div class="p-head">
+      <div class="p-name small">${esc(tab.label)}</div>
+      <div><p class="p-tag"><b>${esc(tab.title)}.</b> ${md(tab.tagline)}</p>
+        <div class="chips">${tab.chips.map(l => `<span class="chip">${esc(l)}</span>`).join("")}</div></div>
+    </div>
+    ${impHtml(tab.imp)}
+    ${filesHtml(tab.files)}
+    <section class="s"><div class="s-h"><h2>Ключові властивості</h2></div>
+      <div class="props">${tab.props.map(pr => `<div class="prop"><h3>${esc(pr.t)}</h3><p>${md(pr.d)}</p></div>`).join("")}</div></section>
+    <section class="s"><div class="s-h"><h2>${esc(tab.methodsTitle || "Методи")}</h2><span class="sub">позицій: ${tab.methods.length}</span><span class="grow"></span>
+      <input class="filter" type="search" placeholder="Пошук" aria-label="Пошук"></div>
+      <div class="m-list">${methodsHtml(tab)}</div></section>
+    <section class="s"><div class="s-h"><h2>Операції та підводні камені</h2><span class="sub">реальні результати з Python ${DATA.version}</span></div>
+      <div class="ops">${tab.ops.map(cell).join("")}</div></section>`;
+}
+
+function buildTable(tab) {
+  const rows = tab.groups.map(g => `<tr class="fmt-group"><td colspan="4">${esc(g.name)}</td></tr>` + g.rows.map(r =>
+    `<tr><td class="c"><code>${esc(r.code)}</code></td><td class="wrap">${md(r.desc)}</td><td class="ex">${hl(r.ex)}</td>${tab.plain ? `<td class="wrap note-c">${md(r.out)}</td>` : `<td class="ex out${r.err ? " err" : ""}">${esc(r.out)}</td>`}</tr>`).join("")).join("");
+  return `
+    <div class="p-head">
+      <div class="p-name small">${esc(tab.label)}</div>
+      <div><p class="p-tag"><b>${esc(tab.title)}.</b> ${md(tab.tagline)}</p></div>
+    </div>
+    ${impHtml(tab.imp)}
+    <section class="s"><div class="s-h"><h2>${esc(tab.tableTitle)}</h2><span class="sub">${esc(tab.tableSub)}</span></div>
+      <div class="tbl-scroll"><table class="t fmt"><thead><tr>${tab.cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>
+    </section>
+    ${tab.notes && tab.notes.length ? `<section class="s"><div class="s-h"><h2>На що звернути увагу</h2></div><ul class="notes">${tab.notes.map(n => `<li>${md(n)}</li>`).join("")}</ul></section>` : ""}
+    ${tab.sections.map(g => `<section class="s"><div class="s-h"><h2>${esc(g.name)}</h2><span class="sub">реальні результати з Python ${DATA.version}</span></div><div class="ops">${g.cells.map(cell).join("")}</div></section>`).join("")}`;
+}
+
+function buildSteps(tab) {
+  return `
+    <div class="p-head">
+      <div class="p-name small">${esc(tab.label)}</div>
+      <div><p class="p-tag"><b>${esc(tab.title)}.</b> ${md(tab.tagline)}</p>
+        <div class="chips">${tab.chips.map(l => `<span class="chip">${esc(l)}</span>`).join("")}</div></div>
+    </div>
+    ${tab.steps.map((st, i) => `<section class="s"><div class="s-h"><span class="step-n">${i + 1}</span><h2>${esc(st.title)}</h2></div>
+      <div class="step-d">${st.text.split("\n\n").map(t => `<p>${md(t)}</p>`).join("")}</div>
+      <div class="ops">${st.cells.map(cell).join("")}</div></section>`).join("")}
+    <section class="s"><div class="s-h"><h2>Чекліст і типові відмови</h2></div><ul class="notes">${tab.notes.map(n => `<li>${md(n)}</li>`).join("")}</ul></section>`;
+}
+
+function buildRecipes(tab) {
+  return `
+    <div class="p-head">
+      <div class="p-name small">${esc(tab.label)}</div>
+      <div><p class="p-tag"><b>${esc(tab.title)}.</b> ${md(tab.tagline)}</p></div>
+    </div>
+    ${impHtml(tab.imp)}
+    ${tab.groups.map(g => `<section class="s"><div class="s-h"><h2>${esc(g.name)}</h2></div><div class="ops">${g.cells.map(cell).join("")}</div></section>`).join("")}`;
+}
+
+$("#ver").textContent = `CPython ${DATA.version}`;
+$("#ver2").textContent = DATA.version;
+const TABS = DATA.tabs.map(t => t.key);
+const tablist = $("#tablist"), panels = $("#panels");
+DATA.tabs.forEach((tab, i) => {
+  const b = document.createElement("button");
+  const concept = tab.kind !== "api";
+  b.className = "tab" + (concept ? " concept" : "") + (tab.sep ? " sep" : "");
+  b.id = "tab-" + tab.key; b.setAttribute("role", "tab"); b.setAttribute("aria-controls", "panel-" + tab.key); b.tabIndex = -1;
+  b.textContent = tab.label;
+  b.addEventListener("click", () => select(tab.key, true));
+  tablist.appendChild(b);
+  const p = document.createElement("div");
+  p.className = "panel"; p.id = "panel-" + tab.key; p.setAttribute("role", "tabpanel"); p.setAttribute("aria-labelledby", "tab-" + tab.key); p.hidden = true;
+  p.innerHTML = tab.kind === "table" ? buildTable(tab) : tab.kind === "recipes" ? buildRecipes(tab) : tab.kind === "steps" ? buildSteps(tab) : buildApi(tab);
+  const f = $(".filter", p);
+  if (f) f.addEventListener("input", () => {
+    const q = f.value.trim().toLowerCase();
+    const rows = p.querySelectorAll(".m-row");
+    rows.forEach(r => r.hidden = q && !r.dataset.q.includes(q));
+    p.querySelectorAll(".m-group").forEach(g => g.hidden = ![...rows].some(r => r.dataset.g === g.dataset.g && !r.hidden));
+  });
+  panels.appendChild(p);
+});
+tablist.addEventListener("keydown", e => {
+  const i = TABS.indexOf(document.activeElement.id.replace("tab-", ""));
+  if (i < 0) return;
+  let j = null;
+  if (e.key === "ArrowRight") j = (i + 1) % TABS.length;
+  if (e.key === "ArrowLeft") j = (i - 1 + TABS.length) % TABS.length;
+  if (e.key === "Home") j = 0;
+  if (e.key === "End") j = TABS.length - 1;
+  if (j !== null) { e.preventDefault(); select(TABS[j], true); $("#tab-" + TABS[j]).focus(); }
+});
+function select(key, user) {
+  if (!TABS.includes(key)) key = TABS[0];
+  TABS.forEach(k => {
+    const on = k === key;
+    const b = $("#tab-" + k); b.setAttribute("aria-selected", on); b.tabIndex = on ? 0 : -1;
+    $("#panel-" + k).hidden = !on;
+  });
+  if (user) {
+    try { localStorage.setItem("pymod-tab", key); } catch (e) {}
+    try { history.replaceState(null, "", "#" + key); } catch (e) {}
+    const t = $(".tabs");
+    if (t.getBoundingClientRect().top <= 1) window.scrollTo({ top: t.offsetTop, behavior: "instant" });
+    $("#tab-" + key).scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
+}
+let initial = location.hash.slice(1);
+if (!TABS.includes(initial)) { try { initial = localStorage.getItem("pymod-tab") || ""; } catch (e) { initial = ""; } }
+select(TABS.includes(initial) ? initial : TABS[0], false);
+window.addEventListener("hashchange", () => select(location.hash.slice(1), false));
+</script>
+</body>
+</html>

@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Шпаргалка: файли</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Onest:wght@600;800&display=swap">
+<style>
+/* Layout: tabbed cheatsheet. Sticky tab rail of types; each panel = header, properties, methods, REPL cells. */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --ink: #141a24;
+  --muted: #5a6476;
+  --line: #dbe0e8;
+  --accent: #2354c7;
+  --accent-soft: #e6edfb;
+  --err: #b4322b;
+  --err-soft: #fbeceb;
+  --ok: #1f7a4d;
+  /* memory roles */
+  --m-gc: #eceef2;   --m-gc-ink: #6b7384;
+  --m-head: #dfe7f7; --m-head-ink: #23407f;
+  --m-meta: #ece3f7; --m-meta-ink: #5a3290;
+  --m-ptr: #d9f0ec;  --m-ptr-ink: #105e52;
+  --m-data: #fbefc9; --m-data-ink: #7a5300;
+  --m-empty: #f6f7f9; --m-empty-ink: #9aa2b1;
+  --font-display: "Onest", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1218; --surface: #151b24; --ink: #e5e9f0; --muted: #98a2b4; --line: #283141;
+    --accent: #86a8ff; --accent-soft: #1b2740; --err: #ff8a80; --err-soft: #3a1d1d; --ok: #6fd3a0;
+    --m-gc: #1d222b; --m-gc-ink: #8d96a7;
+    --m-head: #1b2a48; --m-head-ink: #a9c1f7;
+    --m-meta: #2b2140; --m-meta-ink: #cdb4f5;
+    --m-ptr: #12322d; --m-ptr-ink: #8fe0d1;
+    --m-data: #3a2f12; --m-data-ink: #f4d27a;
+    --m-empty: #181d25; --m-empty-ink: #5f6878;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1218; --surface: #151b24; --ink: #e5e9f0; --muted: #98a2b4; --line: #283141;
+  --accent: #86a8ff; --accent-soft: #1b2740; --err: #ff8a80; --err-soft: #3a1d1d; --ok: #6fd3a0;
+  --m-gc: #1d222b; --m-gc-ink: #8d96a7;
+  --m-head: #1b2a48; --m-head-ink: #a9c1f7;
+  --m-meta: #2b2140; --m-meta-ink: #cdb4f5;
+  --m-ptr: #12322d; --m-ptr-ink: #8fe0d1;
+  --m-data: #3a2f12; --m-data-ink: #f4d27a;
+  --m-empty: #181d25; --m-empty-ink: #5f6878;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-inline: 16px; padding-block: 0 64px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; }
+code, pre, .mono { font-family: var(--font-mono); font-size: 0.9em; font-variant-ligatures: none; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+/* header */
+.top { padding-block: 32px 18px; display: flex; flex-wrap: wrap; gap: 12px 32px; align-items: end; justify-content: space-between; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(28px, 4.4vw, 42px); line-height: 1.05; margin: 6px 0 8px; letter-spacing: -0.01em; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); max-width: 62ch; }
+.key-legend { display: flex; gap: 16px; font-size: 13px; color: var(--muted); }
+.key-legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+/* tabs */
+.tabs {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg); border-bottom: 1px solid var(--line);
+  margin-inline: -16px; padding-inline: 16px;
+}
+.tablist { max-width: 1180px; margin: 0 auto; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.tablist::-webkit-scrollbar { display: none; }
+.tab {
+  appearance: none; border: 0; background: none; cursor: pointer; color: var(--muted);
+  font-family: var(--font-mono); font-size: 15px; font-weight: 500;
+  padding: 12px 14px 11px; border-bottom: 3px solid transparent; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 700; }
+.dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid currentColor; flex: none; }
+.dot.mut { background: currentColor; }
+.tab .dot { color: var(--accent); }
+
+/* panel header */
+.panel { padding-block: 28px 0; }
+.p-head { display: grid; grid-template-columns: auto 1fr; gap: 6px 28px; align-items: start; }
+.p-name { font-family: var(--font-mono); font-weight: 700; font-size: clamp(44px, 8vw, 76px); line-height: 0.95; letter-spacing: -0.03em; color: var(--accent); }
+.p-tag { font-size: 18px; margin: 4px 0 12px; max-width: 60ch; text-wrap: pretty; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-family: var(--font-mono); font-size: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; }
+.flags { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 14px; font-size: 13px; }
+.flag { display: inline-flex; gap: 6px; align-items: baseline; }
+.flag b { font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; font-size: 11px; color: var(--muted); }
+.flag .yes { color: var(--ok); font-weight: 600; }
+.flag .no { color: var(--muted); }
+@media (max-width: 640px) { .p-head { grid-template-columns: 1fr; } }
+
+/* sections */
+section.s { margin-top: 40px; }
+.s-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 18px; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 22px; margin: 0; letter-spacing: -0.005em; }
+.s-h .sub { color: var(--muted); font-size: 13px; }
+.s-h .grow { flex: 1; }
+
+/* properties */
+.props { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 18px 36px; }
+.prop { min-width: 0; padding-top: 10px; border-top: 1px solid var(--line); }
+.prop h3 { font-size: 15px; font-weight: 600; margin: 0 0 3px; }
+.prop p { margin: 0; color: var(--muted); font-size: 14px; }
+.prop code, .notes code, .m-desc code { color: var(--ink); background: var(--surface); border: 1px solid var(--line); padding: 0 4px; border-radius: 3px; font-size: 0.86em; }
+
+/* methods */
+.filter { font-family: var(--font-mono); font-size: 14px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); width: min(100%, 16em); }
+.m-group { font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; color: var(--muted); margin: 22px 0 6px; }
+.m-group:first-child { margin-top: 0; }
+.m-row { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr) minmax(0, 1.25fr); gap: 6px 24px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.m-name { font-family: var(--font-mono); font-weight: 700; font-size: 15px; }
+.m-sig { font-family: var(--font-mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; margin-top: 2px; }
+.m-desc { font-size: 14px; }
+.m-empty { color: var(--muted); padding: 12px 0; }
+@media (max-width: 900px) { .m-row { grid-template-columns: 1fr; } }
+.m-note { font-size: 14px; color: var(--muted); margin: -6px 0 12px; }
+
+/* code cells */
+.cell { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.cell pre { margin: 0; padding: 8px 12px; overflow-x: auto; font-size: 13px; line-height: 1.5; }
+.cell .res { border-top: 1px dashed var(--line); padding: 6px 12px; font-family: var(--font-mono); font-size: 13px; overflow-x: auto; white-space: pre; display: flex; gap: 8px; }
+.cell .res::before { content: "→"; color: var(--muted); flex: none; }
+.cell .res.err { background: var(--err-soft); color: var(--err); }
+.cell .res.err::before { content: "✕"; }
+.cell .stdout { padding: 4px 12px 0; font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); white-space: pre; }
+.cell .stdout::before { content: "виводить: "; font-family: var(--font-body); }
+.cell .note { padding: 0 12px 8px; font-size: 12.5px; color: var(--muted); }
+.ops { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 12px; }
+.ops .cell .note { padding-top: 6px; }
+.tk-k { color: var(--m-meta-ink); font-weight: 500; }
+.tk-s { color: var(--ok); }
+.tk-n { color: var(--m-data-ink); }
+.tk-b { color: var(--accent); }
+.tk-c { color: var(--muted); font-style: italic; }
+
+/* truth table + compare */
+.tbl-scroll { overflow-x: auto; }
+table.t { border-collapse: collapse; font-size: 14px; width: 100%; }
+table.t th, table.t td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.t th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+table.t td.n { font-family: var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; }
+table.t td.y { color: var(--ok); font-weight: 600; }
+table.t td.x { color: var(--muted); }
+table.t td code { font-weight: 700; }
+table.t tbody tr:hover { background: var(--surface); }
+.truth td { font-family: var(--font-mono); text-align: center; }
+.truth th { text-align: center; }
+
+footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+footer p { margin: 0 0 4px; max-width: 80ch; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .panel { animation: rise 0.22s ease-out; }
+  @keyframes rise { from { transform: translateY(4px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+}
+/* concept tabs: mutability, typing, precedence, collections */
+.tab.concept { font-family: var(--font-body); }
+.tab.sep { margin-left: auto; }
+table.t th .mono { text-transform: none; letter-spacing: 0; }
+.callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 10px 14px; border-radius: 0 var(--radius) var(--radius) 0; font-size: 14px; max-width: 76ch; margin: 0; }
+.callout code, .fig .cap code, .mk-n code, .fq code, td.wrap code { background: var(--surface); border: 1px solid var(--line); padding: 0 4px; border-radius: 3px; font-size: 0.86em; }
+.fine { color: var(--muted); font-size: 13px; max-width: 80ch; margin: 12px 0 0; }
+.fine p { margin: 2px 0; }
+
+.figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 16px; }
+.fig { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.fig h3 { font-size: 14px; font-weight: 600; margin: 0 0 10px; }
+.fig svg { display: block; width: 100%; height: auto; }
+.fig .cap { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+.fig svg text { font-family: var(--font-mono); font-size: 13px; fill: var(--ink); }
+.fig svg .sv-h { font-family: var(--font-body); font-size: 12px; fill: var(--muted); }
+.fig svg .sv-sub { font-size: 11px; fill: var(--muted); }
+.n-name { fill: var(--m-head); stroke: var(--m-head-ink); }
+.t-name { fill: var(--m-head-ink) !important; font-weight: 700; }
+.n-obj { fill: var(--m-data); stroke: var(--m-data-ink); }
+.n-new { fill: var(--m-ptr); stroke: var(--m-ptr-ink); }
+.n-lit { fill: var(--surface); stroke: var(--muted); }
+.n-off { fill: var(--m-empty); stroke: var(--line); }
+.n-hit { fill: var(--m-ptr); stroke: var(--ok); stroke-width: 2; }
+.edge { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.edge.hot { stroke: var(--ok); stroke-width: 2; }
+.ah { fill: var(--muted); }
+.ah.hot { fill: var(--ok); }
+.sv-ok { fill: var(--ok) !important; font-weight: 700; }
+.divider { stroke: var(--line); stroke-dasharray: 4 4; }
+
+/* group colours (precedence) */
+.g-acc { --g: var(--m-gc); --gi: var(--m-gc-ink); }
+.g-ar { --g: var(--m-data); --gi: var(--m-data-ink); }
+.g-bit { --g: var(--m-meta); --gi: var(--m-meta-ink); }
+.g-cmp { --g: var(--m-ptr); --gi: var(--m-ptr-ink); }
+.g-log { --g: var(--m-head); --gi: var(--m-head-ink); }
+.g-oth { --g: var(--err-soft); --gi: var(--err); }
+.op-node { fill: var(--g); stroke: var(--gi); stroke-width: 1.5; }
+
+/* mutability tree */
+.tree { display: grid; justify-items: center; }
+.tree-root { font-family: var(--font-display); font-weight: 600; background: var(--ink); color: var(--bg); padding: 8px 18px; border-radius: var(--radius); }
+.tree-stem { width: 2px; height: 18px; background: var(--muted); }
+.tree-br { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; padding-top: 18px; }
+.tree-br::before { content: ""; position: absolute; top: 0; left: 25%; right: 25%; height: 18px; border: 2px solid var(--muted); border-bottom: 0; border-radius: 6px 6px 0 0; }
+.branch { min-width: 0; background: var(--surface); border: 1.5px solid var(--line); border-top: 4px solid var(--bc); border-radius: var(--radius); padding: 12px 14px; }
+.branch.mut { --bc: var(--m-data-ink); }
+.branch.imm { --bc: var(--accent); }
+.branch h3 { margin: 0; font-size: 16px; display: flex; gap: 8px; align-items: center; }
+.branch .dot { color: var(--bc); }
+.branch p { margin: 2px 0 10px; color: var(--muted); font-size: 13px; }
+.branch ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: 4px 12px; }
+.branch li { display: flex; gap: 8px; align-items: baseline; font-size: 13px; color: var(--muted); }
+.branch li code { color: var(--ink); font-weight: 700; font-size: 14px; }
+.branch li a { text-decoration: none; }
+.branch li a code { color: var(--accent); }
+
+/* yes/no marks in tables */
+table.t td.wrap { white-space: normal; min-width: 12rem; }
+td.mk .sym { font-weight: 700; font-family: var(--font-mono); }
+td.mk.y .sym { color: var(--ok); }
+td.mk.no .sym { color: var(--err); }
+td.mk.warn .sym { color: var(--m-data-ink); }
+td.mk.mid .sym { color: var(--muted); }
+.mk-n { color: var(--muted); font-size: 13px; }
+table.t th.hl, table.t td.hl { background: var(--accent-soft); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); margin-top: 10px; }
+.legend b { font-family: var(--font-mono); }
+
+/* typing quadrant */
+.quad { display: grid; grid-template-columns: minmax(64px, auto) 1fr 1fr; gap: 8px; max-width: 860px; }
+.q-ax { font-weight: 600; font-size: 14px; display: flex; flex-direction: column; justify-content: center; }
+.q-ax small { font-weight: 400; color: var(--muted); font-size: 12px; }
+.q-x { text-align: center; }
+.q-cell { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.q-cell.hot { border: 2px solid var(--accent); background: var(--accent-soft); }
+.q-t { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+.q-langs { display: flex; flex-wrap: wrap; gap: 4px; }
+.q-langs span { font-size: 13px; border: 1px solid var(--line); border-radius: 4px; padding: 0 6px; background: var(--bg); }
+.q-langs span.me { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+.q-ex { font-size: 13px; overflow-wrap: anywhere; }
+.q-ex .r { color: var(--muted); }
+.q-ex .r.no { color: var(--err); }
+.q-ex .r.warn { color: var(--m-data-ink); }
+
+/* typing timelines */
+.lanes { display: grid; gap: 14px; }
+.lane-h { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+.lane-h span { color: var(--muted); font-weight: 400; }
+.steps { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.st { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 10px; font-size: 13px; line-height: 1.3; }
+.st small { display: block; color: var(--muted); font-size: 12px; }
+.st.ok { border-color: var(--ok); }
+.st.bad { border-color: var(--err); background: var(--err-soft); color: var(--err); font-weight: 600; }
+.st.bad small { color: var(--err); font-weight: 400; }
+.st.off { opacity: 0.45; border-style: dashed; }
+.steps .arr { color: var(--muted); }
+
+/* precedence */
+.strip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 4px; font-size: 13px; }
+.strip .pc { font-family: var(--font-mono); background: var(--g); color: var(--gi); border-radius: 4px; padding: 2px 8px; font-weight: 600; white-space: nowrap; }
+.strip .gt { color: var(--muted); }
+.strip .end { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+.g-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 13px; }
+.g-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.g-legend i { width: 12px; height: 12px; border-radius: 3px; background: var(--g); border: 1px solid var(--gi); }
+table.prec td.num { font-family: var(--font-mono); font-weight: 700; text-align: center; background: var(--g); color: var(--gi); width: 2.5em; }
+table.prec td.grp { font-weight: 600; color: var(--gi); border-left: 4px solid var(--gi); vertical-align: top; }
+table.prec td.opsx { white-space: normal; min-width: 11rem; }
+table.prec td.opsx code { display: inline-block; margin: 1px 6px 1px 0; }
+.assoc { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+.as-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 4px; justify-items: start; }
+.as-card h3 { margin: 0 0 4px; font-size: 14px; }
+.as-card code { font-size: 15px; }
+.as-card .dn { color: var(--muted); font-size: 13px; }
+.as-card .grp1 { background: var(--m-data); color: var(--m-data-ink); border-radius: 3px; padding: 0 2px; }
+.paren { font-size: 14px; overflow-x: auto; white-space: nowrap; padding: 8px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); margin: 0 0 12px; }
+
+/* collections */
+table.bigo td.o { font-family: var(--font-mono); text-align: center; font-weight: 600; }
+table.bigo td.o1 { background: var(--m-ptr); color: var(--m-ptr-ink); }
+table.bigo td.on { background: var(--m-data); color: var(--m-data-ink); }
+table.bigo td.ox { color: var(--muted); }
+table.bigo td.o sup { font-weight: 400; }
+table.coll th.c, table.bigo th.c { text-align: center; font-family: var(--font-mono); text-transform: none; font-size: 14px; color: var(--ink); letter-spacing: 0; }
+table.coll td.mk, table.coll td.cc { text-align: center; }
+.flow { display: grid; grid-template-columns: minmax(0, 24rem) auto auto; gap: 0 10px; align-items: center; justify-content: start; }
+.fq { grid-column: 1; background: var(--surface); border: 1.5px solid var(--muted); border-radius: var(--radius); padding: 9px 14px; font-weight: 500; }
+.fy { color: var(--ok); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.fr { font-family: var(--font-mono); font-weight: 700; background: var(--accent); color: var(--bg); padding: 4px 12px; border-radius: var(--radius); text-decoration: none; justify-self: start; }
+.fr small { font-weight: 400; font-family: var(--font-body); opacity: 0.85; }
+.fn { grid-column: 1; justify-self: center; color: var(--muted); font-size: 13px; padding: 3px 0; }
+.fn::before { content: "↓ "; }
+.flow .fr.last { grid-column: 1; justify-self: center; }
+@media (max-width: 560px) {
+  .tree-br { grid-template-columns: 1fr; }
+  .tree-br::before { display: none; }
+  .quad { grid-template-columns: 1fr; }
+  .quad .q-ax.q-y1, .quad .q-ax.q-y2, .quad .q-blank, .quad .q-x { display: none; }
+  .flow { grid-template-columns: minmax(0, 1fr) auto auto; }
+}
+
+.imp { margin: 0 0 8px; max-width: 760px; }
+.imp-l { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin: 18px 0 6px; }
+.p-name.small { font-size: clamp(34px, 6vw, 56px); }
+.tab { font-family: var(--font-mono); }
+.tab.sep { margin-left: auto; font-family: var(--font-body); }
+.tab.concept { font-family: var(--font-body); }
+table.fmt td.c code { font-size: 15px; font-weight: 700; color: var(--accent); }
+table.fmt td.ex { font-family: var(--font-mono); white-space: pre; font-size: 13px; }
+table.fmt td.out { color: var(--ok); }
+table.fmt td.out.err { color: var(--err); }
+table.fmt td.wrap { white-space: normal; min-width: 14rem; }
+table.fmt td.p-yes { color: var(--ok); font-weight: 600; }
+table.fmt td.p-no { color: var(--muted); }
+table.fmt td.p-pair { color: var(--m-data-ink); font-weight: 600; }
+.fmt-group td { background: var(--accent-soft); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.notes { margin: 0; padding-left: 18px; max-width: 80ch; color: var(--muted); font-size: 14px; }
+.notes li { margin: 4px 0; }
+.refdate { font-size: 14px; margin: 0 0 12px; color: var(--muted); }
+.refdate b { color: var(--ink); }
+.cell .stdout::before { content: "виводить: "; }
+.cell pre { white-space: pre; }
+.cell pre, .cell .res { tab-size: 4; }
+
+/* UTC tab: world map with 15-degree zone strips, live city clocks */
+/* Code cells show their full content: wrap long lines instead of scrolling */
+.cell pre, .cell .res, .cell .stdout, table.fmt td.ex { white-space: pre-wrap; overflow-wrap: anywhere; overflow-x: visible; }
+.cell pre, .cell .res { font-size: 13.5px; }
+.m-row { grid-template-columns: minmax(0, 13rem) minmax(0, 1fr) minmax(0, 1.6fr); }
+.ops { grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); }
+table.fmt td.ex { min-width: 16rem; }
+@media (max-width: 640px) {
+  table.fmt thead { display: none; }
+  table.fmt, table.fmt tbody, table.fmt tr, table.fmt td { display: block; width: 100%; }
+  table.fmt tr { border-bottom: 1px solid var(--line); padding: 6px 0; }
+  table.fmt td { border: 0; padding: 2px 4px; white-space: normal; min-width: 0; }
+  table.fmt td.ex { min-width: 0; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow" id="ver"></div>
+      <h1>Шпаргалка: файли</h1>
+      <p class="lede">Читання й запис файлів з <code>open()</code>, режими, кодування й бінарні дані, <code>with</code>, курсор <code>seek</code>/<code>tell</code>, шляхи з <code>pathlib</code>, копіювання та архіви з <code>shutil</code>, файлові виключення — і готові рецепти.</p>
+    </div>
+  </header>
+</div>
+<nav class="tabs" aria-label="Розділи">
+  <div class="tablist" role="tablist" id="tablist"></div>
+</nav>
+<main class="wrap" id="panels"></main>
+<div class="wrap">
+  <footer>
+    <p>Кожен результат на цій сторінці отримано справжнім запуском прикладу в CPython <span id="ver2"></span>.</p>
+  </footer>
+</div>
+<script>
+const DATA = {"version": "3.14.3", "tabs": [{"key": "open", "label": "open", "kind": "api", "title": "Функція open() і with", "tagline": "`open()` відкриває файл і повертає файловий об'єкт. `with` гарантує, що файл буде закрито, навіть якщо всередині сталася помилка.", "chips": ["open(path, \"r\", encoding=\"utf-8\")", "with open(...) as f:", "f.close()", "f.closed", "f.name", "f.mode"], "imp": "from pathlib import Path\nPath(\"notes.txt\").write_text(\"Перший рядок\\nДругий рядок\\nТретій рядок\\n\", encoding=\"utf-8\")", "props": [{"t": "Навіщо файли", "d": "Змінні живуть, поки працює програма. Файл зберігає дані між запусками: налаштування, журнали, звіти, обмін даними з іншими програмами."}, {"t": "Файловий об'єкт, а не текст", "d": "`open()` повертає не вміст, а «з'єднання» з файлом із курсором. Кожне читання чи запис рухає курсор далі."}, {"t": "Завжди encoding=\"utf-8\"", "d": "Без нього Python бере кодування системи (на Windows часто `cp1251`), і файл, записаний на Mac, може не прочитатися на Windows."}, {"t": "Чому закривати важливо", "d": "Відкритий файл займає ресурс ОС, а записане може лишатися в буфері й не потрапити на диск. `with` закриває файл автоматично — використовуйте його завжди."}], "methods": [{"group": "Відкриття", "name": "open", "sig": "open(file, mode=\"r\", encoding=None)", "desc": "Відкриває файл і повертає файловий об'єкт. За замовчуванням — читання тексту.", "ex": "f = open(\"notes.txt\", encoding=\"utf-8\")\nf", "out": "<_io.TextIOWrapper name='notes.txt' mode='r' encoding='utf-8'>", "err": false, "stdout": "", "note": ""}, {"group": "Відкриття", "name": "name / mode / encoding", "sig": "f.name, f.mode, f.encoding", "desc": "Атрибути відкритого файлу.", "ex": "f = open(\"notes.txt\", \"a\", encoding=\"utf-8\")\nf.name, f.mode, f.encoding", "out": "('notes.txt', 'a', 'utf-8')", "err": false, "stdout": "", "note": ""}, {"group": "Відкриття", "name": "close", "sig": "f.close()", "desc": "Закриває файл і записує буфер на диск. Повторний виклик безпечний.", "ex": "f = open(\"notes.txt\", encoding=\"utf-8\")\ntext = f.read()\nf.close()\nf.closed", "out": "True", "err": false, "stdout": "", "note": ""}, {"group": "Відкриття", "name": "Path у open", "sig": "open(Path(...))", "desc": "Шлях можна передати рядком або об'єктом `Path`.", "ex": "with open(Path(\"notes.txt\"), encoding=\"utf-8\") as f:\n    first = f.readline()\nfirst", "out": "'Перший рядок\\n'", "err": false, "stdout": "", "note": ""}, {"group": "Контекстний менеджер with", "name": "with ... as f", "sig": "with open(...) as f:", "desc": "Після виходу з блоку файл закривається сам.", "ex": "with open(\"notes.txt\", encoding=\"utf-8\") as f:\n    first = f.readline()\nfirst, f.closed", "out": "('Перший рядок\\n', True)", "err": false, "stdout": "", "note": ""}, {"group": "Контекстний менеджер with", "name": "закриття при помилці", "sig": "with ...: raise", "desc": "Файл закривається, навіть якщо в блоці виникло виключення.", "ex": "try:\n    with open(\"notes.txt\", encoding=\"utf-8\") as f:\n        1 / 0\nexcept ZeroDivisionError:\n    print(\"помилка оброблена\")\nf.closed", "out": "True", "err": false, "stdout": "помилка оброблена\n", "note": ""}, {"group": "Контекстний менеджер with", "name": "кілька файлів", "sig": "with open(a) as src, open(b) as dst:", "desc": "Кілька файлів в одному `with`.", "ex": "with open(\"notes.txt\", encoding=\"utf-8\") as src, open(\"copy.txt\", \"w\", encoding=\"utf-8\") as dst:\n    dst.write(src.read().upper())\nPath(\"copy.txt\").read_text(encoding=\"utf-8\")", "out": "'ПЕРШИЙ РЯДОК\\nДРУГИЙ РЯДОК\\nТРЕТІЙ РЯДОК\\n'", "err": false, "stdout": "", "note": ""}, {"group": "Контекстний менеджер with", "name": "у дужках (3.10+)", "sig": "with (\n  open(a) as x,\n  open(b) as y,\n):", "desc": "Довгий `with` можна розбити на рядки.", "ex": "with (\n    open(\"notes.txt\", encoding=\"utf-8\") as src,\n    open(\"first.txt\", \"w\", encoding=\"utf-8\") as dst,\n):\n    dst.write(src.readline())\nPath(\"first.txt\").read_text(encoding=\"utf-8\")", "out": "'Перший рядок\\n'", "err": false, "stdout": "", "note": ""}, {"group": "Параметри", "name": "encoding", "sig": "encoding=\"utf-8\"", "desc": "Кодування, у якому текст лежить на диску. UTF-8 — стандарт для вебу й Linux/macOS.", "ex": "with open(\"ua.txt\", \"w\", encoding=\"utf-8\") as f:\n    f.write(\"Їжак\")\nPath(\"ua.txt\").read_bytes()", "out": "b'\\xd0\\x87\\xd0\\xb6\\xd0\\xb0\\xd0\\xba'", "err": false, "stdout": "", "note": ""}, {"group": "Параметри", "name": "errors", "sig": "errors=\"replace\" | \"ignore\"", "desc": "Що робити з байтами, які не декодуються: замінити на `�` або пропустити. За замовчуванням — помилка.", "ex": "Path(\"old.txt\").write_bytes(\"Привіт\".encode(\"cp1251\"))\nwith open(\"old.txt\", encoding=\"utf-8\", errors=\"replace\") as f:\n    text = f.read()\ntext", "out": "'�����'", "err": false, "stdout": "", "note": ""}, {"group": "Параметри", "name": "newline", "sig": "newline=\"\"", "desc": "Керує перекладом кінців рядків. `newline=\"\"` вимагає модуль `csv`; у решті випадків лишайте як є.", "ex": "with open(\"win.txt\", \"w\", encoding=\"utf-8\", newline=\"\\r\\n\") as f:\n    f.write(\"a\\nb\\n\")\nPath(\"win.txt\").read_bytes()", "out": "b'a\\r\\nb\\r\\n'", "err": false, "stdout": "", "note": ""}], "ops": [{"ex": "f = open(\"notes.txt\", encoding=\"utf-8\")\nf.close()\nf.read()", "note": "файл уже закрито", "out": "ValueError: I/O operation on closed file.", "err": true, "stdout": ""}, {"ex": "open(\"missing.txt\", encoding=\"utf-8\")", "note": "режим `r` вимагає, щоб файл існував", "out": "FileNotFoundError: [Errno 2] No such file or directory: 'missing.txt'", "err": true, "stdout": ""}, {"ex": "open(\"reports/data.txt\", \"w\", encoding=\"utf-8\")", "note": "`w` створює файл, але не папки", "out": "FileNotFoundError: [Errno 2] No such file or directory: 'reports/data.txt'", "err": true, "stdout": ""}, {"ex": "f = open(\"log.txt\", \"w\", encoding=\"utf-8\")\nf.write(\"Привіт\")\nPath(\"log.txt\").read_text(encoding=\"utf-8\")", "note": "без `close()` дані ще в буфері, на диску порожньо", "out": "''", "err": false, "stdout": ""}, {"ex": "with open(\"log.txt\", \"w\", encoding=\"utf-8\") as f:\n    f.write(\"Привіт\")\nPath(\"log.txt\").read_text(encoding=\"utf-8\")", "note": "після `with` усе на диску", "out": "'Привіт'", "err": false, "stdout": ""}, {"ex": "open(\"notes.txt\", \"w\", encoding=\"utf-8\").close()\nPath(\"notes.txt\").read_text(encoding=\"utf-8\")", "note": "`w` миттєво стирає вміст", "out": "''", "err": false, "stdout": ""}, {"ex": "with open(\"notes.txt\", encoding=\"cp1251\") as f:\n    text = f.readline()\ntext", "note": "не те кодування: «кракозябри» без помилки", "out": "'РџРµСЂС€РёР№ СЂСЏРґРѕРє\\n'", "err": false, "stdout": ""}, {"ex": "with open(\"notes.txt\", encoding=\"utf-8\") as f:\n    pass\nf.read()", "note": "за межами `with` файл уже закрито", "out": "ValueError: I/O operation on closed file.", "err": true, "stdout": ""}]}, {"key": "read", "label": "read", "kind": "api", "title": "Читання та курсор", "tagline": "Прочитати можна все одразу, по рядку, списком рядків або циклом `for`. Курсор пам'ятає, де зупинилося читання; `seek` і `tell` керують ним.", "chips": ["f.read()", "f.read(n)", "f.readline()", "f.readlines()", "for line in f:", "f.seek(0)", "f.tell()"], "imp": "from pathlib import Path\nPath(\"notes.txt\").write_text(\"Перший рядок\\nДругий рядок\\nТретій рядок\\n\", encoding=\"utf-8\")\nPath(\"scores.txt\").write_text(\"Олена 95\\nБогдан 87\\nІра 78\\n\", encoding=\"utf-8\")", "props": [{"t": "Рядки зберігають \\n", "d": "`readline()`, `readlines()` і цикл `for` повертають рядки разом із `\\n` у кінці. Прибирайте його `rstrip(\"\\n\")` або `strip()`."}, {"t": "Кінець файлу — порожній рядок", "d": "Коли читати більше нічого, `read()` і `readline()` повертають `\"\"`, а не помилку."}, {"t": "for line in f — для великих файлів", "d": "Цикл читає по одному рядку, тож файл на кілька гігабайт не заповнить пам'ять. `read()` і `readlines()` вантажать усе одразу."}, {"t": "tell() рахує байти", "d": "У текстовому режимі `tell()` повертає позицію в байтах, а не в символах: кирилична літера в UTF-8 займає 2 байти."}], "methods": [{"group": "Читання", "name": "read", "sig": "f.read()", "desc": "Увесь файл одним рядком.", "ex": "with open(\"notes.txt\", encoding=\"utf-8\") as f:\n    text = f.read()\ntext", "out": "'Перший рядок\\nДругий рядок\\nТретій рядок\\n'", "err": false, "stdout": "", "note": ""}, {"group": "Читання", "name": "read(n)", "sig": "f.read(size)", "desc": "Не більше n символів від курсора.", "ex": "with open(\"notes.txt\", encoding=\"utf-8\") as f:\n    a = f.read(6)\n    b = f.read(7)\na, b", "out": "('Перший', ' рядок\\n')", "err": false, "stdout": "", "note": ""}, {"group": "Читання", "name": "readline", "sig": "f.readline()", "desc": "Один рядок разом із `\\n`.", "ex": "with open(\"notes.txt\", encoding=\"utf-8\") as f:\n    first = f.readline()\n    second = f.readline()\nfirst, second", "out": "('Перший рядок\\n', 'Другий рядок\\n')", "err": false, "stdout": "", "note": ""}, {"group": "Читання", "name": "readline до кінця", "sig": "while line := f.readline():", "desc": "Наприкінці файлу — порожній рядок, тож цикл зупиняється.", "ex": "with open(\"notes.txt\", encoding=\"utf-8\") as f:\n    while line := f.readline():\n        print(line.rstrip())", "out": "", "err": false, "stdout": "Перший рядок\nДругий рядок\nТретій рядок\n", "note": ""}, {"group": "Читання", "name": "readlines", "sig": "f.readlines()", "desc": "Список усіх рядків з `\\n`.", "ex": "with open(\"notes.txt\", encoding=\"utf-8\") as f:\n    lines = f.readlines()\nlines", "out": "['Перший рядок\\n', 'Другий рядок\\n', 'Третій рядок\\n']", "err": false, "stdout": "", "note": ""}, {"group": "Читання", "name": "read().splitlines()", "sig": "f.read().splitlines()", "desc": "Список рядків уже без `\\n`.", "ex": "with open(\"notes.txt\", encoding=\"utf-8\") as f:\n    lines = f.read().splitlines()\nlines", "out": "['Перший рядок', 'Другий рядок', 'Третій рядок']", "err": false, "stdout": "", "note": ""}, {"group": "Перебір рядків", "name": "for line in f", "sig": "for line in f:", "desc": "Найкращий спосіб для великих файлів: по рядку за раз.", "ex": "with open(\"notes.txt\", encoding=\"utf-8\") as f:\n    for line in f:\n        print(line.rstrip())", "out": "", "err": false, "stdout": "Перший рядок\nДругий рядок\nТретій рядок\n", "note": ""}, {"group": "Перебір рядків", "name": "enumerate", "sig": "enumerate(f, start=1)", "desc": "Рядки з номерами.", "ex": "with open(\"notes.txt\", encoding=\"utf-8\") as f:\n    for no, line in enumerate(f, start=1):\n        print(no, line.rstrip())", "out": "", "err": false, "stdout": "1 Перший рядок\n2 Другий рядок\n3 Третій рядок\n", "note": ""}, {"group": "Перебір рядків", "name": "обробка даних", "sig": "line.split()", "desc": "Рядок → поля → обчислення.", "ex": "with open(\"scores.txt\", encoding=\"utf-8\") as f:\n    scores = {name: int(score) for name, score in (line.split() for line in f)}\nscores, sum(scores.values())", "out": "({'Олена': 95, 'Богдан': 87, 'Іра': 78}, 260)", "err": false, "stdout": "", "note": ""}, {"group": "Курсор: seek і tell", "name": "tell", "sig": "f.tell()", "desc": "Поточна позиція курсора в байтах.", "ex": "with open(\"notes.txt\", encoding=\"utf-8\") as f:\n    f.read(6)\n    pos = f.tell()\npos", "out": "12", "err": false, "stdout": "", "note": ""}, {"group": "Курсор: seek і tell", "name": "seek(0)", "sig": "f.seek(0)", "desc": "Повернутися на початок і прочитати ще раз.", "ex": "with open(\"notes.txt\", encoding=\"utf-8\") as f:\n    first = f.readline()\n    f.seek(0)\n    again = f.readline()\nfirst == again", "out": "True", "err": false, "stdout": "", "note": ""}, {"group": "Курсор: seek і tell", "name": "seek(0, 2)", "sig": "f.seek(0, os.SEEK_END)", "desc": "Стрибок у кінець. Повертає нову позицію — це розмір файлу в байтах.", "ex": "with open(\"notes.txt\", encoding=\"utf-8\") as f:\n    size = f.seek(0, 2)\nsize", "out": "72", "err": false, "stdout": "", "note": ""}, {"group": "Курсор: seek і tell", "name": "seek(tell())", "sig": "pos = f.tell() … f.seek(pos)", "desc": "Запам'ятати місце й повернутися до нього.", "ex": "with open(\"notes.txt\", encoding=\"utf-8\") as f:\n    f.readline()\n    pos = f.tell()\n    f.read()\n    f.seek(pos)\n    line = f.readline()\nline", "out": "'Другий рядок\\n'", "err": false, "stdout": "", "note": ""}, {"group": "Курсор: seek і tell", "name": "seek у бінарному режимі", "sig": "f.seek(offset, whence)", "desc": "У режимі `b` можна стрибати відносно поточної позиції (1) і кінця (2).", "ex": "with open(\"notes.txt\", \"rb\") as f:\n    f.seek(-7, 2)\n    tail = f.read()\ntail, tail.decode()", "out": "(b'\\xd0\\xb4\\xd0\\xbe\\xd0\\xba\\n', 'док\\n')", "err": false, "stdout": "", "note": ""}], "ops": [{"ex": "with open(\"notes.txt\", encoding=\"utf-8\") as f:\n    a = f.read()\n    b = f.read()\nlen(a), b", "note": "друге читання: курсор уже в кінці", "out": "(39, '')", "err": false, "stdout": ""}, {"ex": "with open(\"notes.txt\", encoding=\"utf-8\") as f:\n    for line in f:\n        print(line)", "note": "`\\n` з файлу + `\\n` від `print` = порожні рядки", "out": "", "err": false, "stdout": "Перший рядок\n\nДругий рядок\n\nТретій рядок\n\n"}, {"ex": "with open(\"notes.txt\", encoding=\"utf-8\") as f:\n    f.seek(1)\n    f.read()", "note": "`seek` потрапив у середину двобайтової літери", "out": "UnicodeDecodeError: 'utf-8' codec can't decode byte 0x9f in position 0: invalid start byte", "err": true, "stdout": ""}, {"ex": "with open(\"notes.txt\", encoding=\"utf-8\") as f:\n    f.seek(-5, 2)", "note": "у текстовому режимі `seek` лише від початку", "out": "io.UnsupportedOperation: can't do nonzero end-relative seeks", "err": true, "stdout": ""}, {"ex": "with open(\"notes.txt\", encoding=\"utf-8\") as f:\n    data = f.read(6)\n    pos = f.tell()\nlen(data), pos", "note": "6 символів = 12 байтів", "out": "(6, 12)", "err": false, "stdout": ""}, {"ex": "with open(\"scores.txt\", encoding=\"utf-8\") as f:\n    total = sum(int(line.split()[1]) for line in f)\ntotal", "note": "файл читається порядково, не весь одразу", "out": "260", "err": false, "stdout": ""}]}, {"key": "write", "label": "write", "kind": "api", "title": "Запис у файл", "tagline": "Режим `w` перезаписує файл, `a` дописує в кінець, `x` створює лише новий. `write` і `writelines` не додають перенесення рядків самі.", "chips": ["f.write(s)", "f.writelines(lines)", "print(..., file=f)", "open(p, \"a\")", "open(p, \"x\")", "f.flush()"], "imp": "from pathlib import Path\nPath(\"notes.txt\").write_text(\"Перший рядок\\nДругий рядок\\nТретій рядок\\n\", encoding=\"utf-8\")\nnames = [\"Олена\", \"Богдан\", \"Іра\"]", "props": [{"t": "Лише рядки", "d": "`write()` приймає тільки `str` (у режимі `b` — `bytes`). Числа перетворюйте самі: `f.write(str(42))` або f-рядком."}, {"t": "\\n — ваша відповідальність", "d": "Ні `write()`, ні `writelines()` не додають перенесення рядка. `print(..., file=f)` — додає."}, {"t": "w стирає одразу", "d": "Вміст зникає в момент `open(..., \"w\")`, ще до першого запису. Для дописування — `a`, для захисту від перезапису — `x`."}, {"t": "Буфер", "d": "Запис спершу потрапляє в буфер у пам'яті й лише потім на диск: при `close()`, `flush()` або коли буфер заповниться."}], "methods": [{"group": "Запис", "name": "write", "sig": "f.write(s)", "desc": "Записує рядок і повертає кількість записаних символів.", "ex": "with open(\"out.txt\", \"w\", encoding=\"utf-8\") as f:\n    n = f.write(\"Привіт, світ!\\n\")\nn, Path(\"out.txt\").read_text(encoding=\"utf-8\")", "out": "(14, 'Привіт, світ!\\n')", "err": false, "stdout": "", "note": ""}, {"group": "Запис", "name": "writelines", "sig": "f.writelines(iterable)", "desc": "Записує рядки підряд, без роздільників.", "ex": "with open(\"out.txt\", \"w\", encoding=\"utf-8\") as f:\n    f.writelines(names)\nPath(\"out.txt\").read_text(encoding=\"utf-8\")", "out": "'ОленаБогданІра'", "err": false, "stdout": "", "note": ""}, {"group": "Запис", "name": "writelines з \\n", "sig": "f.writelines(f\"{x}\\n\" for x in ...)", "desc": "Перенесення треба додати до кожного рядка.", "ex": "with open(\"out.txt\", \"w\", encoding=\"utf-8\") as f:\n    f.writelines(f\"{name}\\n\" for name in names)\nPath(\"out.txt\").read_text(encoding=\"utf-8\")", "out": "'Олена\\nБогдан\\nІра\\n'", "err": false, "stdout": "", "note": ""}, {"group": "Запис", "name": "\"\\n\".join", "sig": "f.write(\"\\n\".join(lines))", "desc": "Те саме через `join`.", "ex": "with open(\"out.txt\", \"w\", encoding=\"utf-8\") as f:\n    f.write(\"\\n\".join(names) + \"\\n\")\nPath(\"out.txt\").read_text(encoding=\"utf-8\")", "out": "'Олена\\nБогдан\\nІра\\n'", "err": false, "stdout": "", "note": ""}, {"group": "Запис", "name": "print(file=f)", "sig": "print(*values, file=f)", "desc": "Як звичайний `print`: пробіли між значеннями й `\\n` у кінці, будь-які типи.", "ex": "with open(\"out.txt\", \"w\", encoding=\"utf-8\") as f:\n    print(\"Олена\", 95, file=f)\n    print(\"Богдан\", 87, file=f)\nPath(\"out.txt\").read_text(encoding=\"utf-8\")", "out": "'Олена 95\\nБогдан 87\\n'", "err": false, "stdout": "", "note": ""}, {"group": "Запис", "name": "f-рядки", "sig": "f.write(f\"...\\n\")", "desc": "Числа й форматування — через f-рядок.", "ex": "with open(\"out.txt\", \"w\", encoding=\"utf-8\") as f:\n    for i, name in enumerate(names, 1):\n        f.write(f\"{i:>2}. {name:<8}|\\n\")\nprint(Path(\"out.txt\").read_text(encoding=\"utf-8\"))", "out": "", "err": false, "stdout": " 1. Олена   |\n 2. Богдан  |\n 3. Іра     |\n\n", "note": ""}, {"group": "Режими запису", "name": "w", "sig": "open(p, \"w\")", "desc": "Створює файл або стирає наявний.", "ex": "with open(\"notes.txt\", \"w\", encoding=\"utf-8\") as f:\n    f.write(\"Новий текст\\n\")\nPath(\"notes.txt\").read_text(encoding=\"utf-8\")", "out": "'Новий текст\\n'", "err": false, "stdout": "", "note": ""}, {"group": "Режими запису", "name": "a", "sig": "open(p, \"a\")", "desc": "Дописує в кінець; створює файл, якщо його немає. Для журналів.", "ex": "with open(\"notes.txt\", \"a\", encoding=\"utf-8\") as f:\n    f.write(\"Четвертий рядок\\n\")\nPath(\"notes.txt\").read_text(encoding=\"utf-8\").splitlines()", "out": "['Перший рядок', 'Другий рядок', 'Третій рядок', 'Четвертий рядок']", "err": false, "stdout": "", "note": ""}, {"group": "Режими запису", "name": "x", "sig": "open(p, \"x\")", "desc": "Лише новий файл; якщо існує — `FileExistsError`. Захист від випадкового перезапису.", "ex": "with open(\"new.txt\", \"x\", encoding=\"utf-8\") as f:\n    f.write(\"створено один раз\")\nPath(\"new.txt\").read_text(encoding=\"utf-8\")", "out": "'створено один раз'", "err": false, "stdout": "", "note": ""}, {"group": "Буфер", "name": "flush", "sig": "f.flush()", "desc": "Примусово скидає буфер на диск, не закриваючи файл.", "ex": "f = open(\"log.txt\", \"w\", encoding=\"utf-8\")\nf.write(\"крок 1\\n\")\nbefore = Path(\"log.txt\").read_text(encoding=\"utf-8\")\nf.flush()\nafter = Path(\"log.txt\").read_text(encoding=\"utf-8\")\nf.close()\nbefore, after", "out": "('', 'крок 1\\n')", "err": false, "stdout": "", "note": ""}], "ops": [{"ex": "with open(\"out.txt\", \"w\", encoding=\"utf-8\") as f:\n    f.write(42)", "note": "`write` приймає лише рядок", "out": "TypeError: write() argument must be str, not int", "err": true, "stdout": ""}, {"ex": "with open(\"out.txt\", \"w\", encoding=\"utf-8\") as f:\n    f.write(\"a\")\n    f.write(\"b\")\nPath(\"out.txt\").read_text(encoding=\"utf-8\")", "note": "без `\\n` усе злипається в один рядок", "out": "'ab'", "err": false, "stdout": ""}, {"ex": "open(\"notes.txt\", \"x\", encoding=\"utf-8\")", "note": "`x` не відкриє наявний файл", "out": "FileExistsError: [Errno 17] File exists: 'notes.txt'", "err": true, "stdout": ""}, {"ex": "with open(\"notes.txt\", \"w\", encoding=\"utf-8\") as f:\n    f.read()", "note": "з файлу, відкритого на запис, читати не можна", "out": "io.UnsupportedOperation: not readable", "err": true, "stdout": ""}, {"ex": "with open(\"notes.txt\", encoding=\"utf-8\") as f:\n    f.write(\"x\")", "note": "і навпаки", "out": "io.UnsupportedOperation: not writable", "err": true, "stdout": ""}, {"ex": "for name in names:\n    with open(\"out.txt\", \"w\", encoding=\"utf-8\") as f:\n        f.write(name + \"\\n\")\nPath(\"out.txt\").read_text(encoding=\"utf-8\")", "note": "`w` у циклі щоразу стирає файл — лишився тільки останній", "out": "'Іра\\n'", "err": false, "stdout": ""}, {"ex": "with open(\"out.txt\", \"w\", encoding=\"utf-8\") as f:\n    for name in names:\n        f.write(name + \"\\n\")\nPath(\"out.txt\").read_text(encoding=\"utf-8\")", "note": "відкривайте один раз, пишіть у циклі", "out": "'Олена\\nБогдан\\nІра\\n'", "err": false, "stdout": ""}]}, {"key": "bytes", "label": "bytes", "kind": "api", "title": "Бінарні файли та кодування", "tagline": "На диску лежать лише байти. Текстовий режим сам перетворює їх на рядок за кодуванням; режим `b` віддає «сирі» байти — для картинок, архівів, PDF.", "chips": ["s.encode(\"utf-8\")", "b.decode(\"utf-8\")", "open(p, \"rb\")", "open(p, \"wb\")", "len(b)"], "imp": "from pathlib import Path\nmessage = \"Привіт!\"\nPath(\"logo.png\").write_bytes(b\"\\x89PNG\\r\\n\\x1a\\n\" + bytes(range(8)))  # початок PNG-файлу", "props": [{"t": "str ↔ bytes", "d": "`str` — це символи, `bytes` — числа 0–255. `encode()` перетворює текст на байти, `decode()` — назад. Кодування — правило перетворення."}, {"t": "UTF-8", "d": "Латиниця — 1 байт, кирилиця — 2, емодзі — 4. Близько 98 % вебсторінок у UTF-8. `cp1251` — старе кодування Windows для кирилиці, `utf-16` — 2–4 байти на символ."}, {"t": "Режим b", "d": "У `rb`/`wb` немає `encoding`: `read()` повертає `bytes`, `write()` приймає `bytes`. Картинку чи архів відкривайте лише так."}, {"t": "Кодування не видно", "d": "Байти не зберігають назву кодування. Прочитати файл правильно можна, лише знаючи, як його записали."}], "methods": [{"group": "Кодування тексту", "name": "encode", "sig": "s.encode(encoding=\"utf-8\")", "desc": "Рядок → байти.", "ex": "message.encode()", "out": "b'\\xd0\\x9f\\xd1\\x80\\xd0\\xb8\\xd0\\xb2\\xd1\\x96\\xd1\\x82!'", "err": false, "stdout": "", "note": ""}, {"group": "Кодування тексту", "name": "різні кодування", "sig": "s.encode(\"cp1251\")", "desc": "Той самий текст — різні байти й різна довжина.", "ex": "len(message), len(message.encode()), len(message.encode(\"cp1251\")), len(message.encode(\"utf-16\"))", "out": "(7, 13, 7, 16)", "err": false, "stdout": "", "note": ""}, {"group": "Кодування тексту", "name": "decode", "sig": "b.decode(encoding=\"utf-8\")", "desc": "Байти → рядок.", "ex": "b\"\\xd0\\x87\\xd0\\xb6\\xd0\\xb0\\xd0\\xba\".decode()", "out": "'Їжак'", "err": false, "stdout": "", "note": ""}, {"group": "Кодування тексту", "name": "errors", "sig": "b.decode(enc, errors=\"replace\")", "desc": "Пропустити або замінити байти, які не декодуються.", "ex": "data = \"Привіт\".encode(\"cp1251\")\ndata.decode(\"utf-8\", errors=\"replace\"), data.decode(\"utf-8\", errors=\"ignore\")", "out": "('�����', '')", "err": false, "stdout": "", "note": ""}, {"group": "Бінарні файли", "name": "wb", "sig": "open(p, \"wb\")", "desc": "Запис байтів.", "ex": "with open(\"cp1251.txt\", \"wb\") as f:\n    f.write(message.encode(\"cp1251\"))\nPath(\"cp1251.txt\").read_bytes()", "out": "b'\\xcf\\xf0\\xe8\\xe2\\xb3\\xf2!'", "err": false, "stdout": "", "note": ""}, {"group": "Бінарні файли", "name": "rb", "sig": "open(p, \"rb\")", "desc": "Читання байтів; декодуйте тим самим кодуванням.", "ex": "Path(\"cp1251.txt\").write_bytes(message.encode(\"cp1251\"))\nwith open(\"cp1251.txt\", \"rb\") as f:\n    raw = f.read()\nraw.decode(\"cp1251\")", "out": "'Привіт!'", "err": false, "stdout": "", "note": ""}, {"group": "Бінарні файли", "name": "заголовок файлу", "sig": "f.read(n)", "desc": "Перші байти визначають формат: PNG завжди починається з `\\x89PNG`.", "ex": "with open(\"logo.png\", \"rb\") as f:\n    head = f.read(8)\nhead, head[1:4]", "out": "(b'\\x89PNG\\r\\n\\x1a\\n', b'PNG')", "err": false, "stdout": "", "note": ""}, {"group": "Бінарні файли", "name": "індекс → число", "sig": "b[i]", "desc": "Елемент `bytes` — ціле число 0–255.", "ex": "with open(\"logo.png\", \"rb\") as f:\n    head = f.read(4)\nhead[0], hex(head[0]), list(head)", "out": "(137, '0x89', [137, 80, 78, 71])", "err": false, "stdout": "", "note": ""}, {"group": "Бінарні файли", "name": "копіювання частинами", "sig": "while chunk := src.read(n):", "desc": "Великий файл копіюють блоками, щоб не вантажити в пам'ять увесь.", "ex": "with open(\"logo.png\", \"rb\") as src, open(\"copy.png\", \"wb\") as dst:\n    while chunk := src.read(4):\n        dst.write(chunk)\nPath(\"copy.png\").read_bytes() == Path(\"logo.png\").read_bytes()", "out": "True", "err": false, "stdout": "", "note": ""}, {"group": "Бінарні файли", "name": "розмір", "sig": "len(f.read())", "desc": "Розмір у байтах. Для великих файлів краще `Path(p).stat().st_size`.", "ex": "with open(\"logo.png\", \"rb\") as f:\n    size = len(f.read())\nsize, Path(\"logo.png\").stat().st_size", "out": "(16, 16)", "err": false, "stdout": "", "note": ""}], "ops": [{"ex": "Path(\"u8.txt\").write_text(message, encoding=\"utf-8\")\nPath(\"u8.txt\").read_text(encoding=\"cp1251\")", "note": "записали в UTF-8, прочитали як cp1251", "out": "'РџСЂРёРІС–С‚!'", "err": false, "stdout": ""}, {"ex": "Path(\"w.txt\").write_bytes(message.encode(\"cp1251\"))\nPath(\"w.txt\").read_text(encoding=\"utf-8\")", "note": "записали в cp1251, прочитали як UTF-8", "out": "UnicodeDecodeError: 'utf-8' codec can't decode byte 0xcf in position 0: invalid continuation byte", "err": true, "stdout": ""}, {"ex": "with open(\"logo.png\", encoding=\"utf-8\") as f:\n    f.read()", "note": "картинку не можна читати як текст", "out": "UnicodeDecodeError: 'utf-8' codec can't decode byte 0x89 in position 0: invalid start byte", "err": true, "stdout": ""}, {"ex": "with open(\"data.bin\", \"wb\") as f:\n    f.write(\"текст\")", "note": "у режимі `b` — лише `bytes`", "out": "TypeError: a bytes-like object is required, not 'str'", "err": true, "stdout": ""}, {"ex": "message.encode(\"ascii\")", "note": "в ASCII немає кирилиці", "out": "UnicodeEncodeError: 'ascii' codec can't encode characters in position 0-5: ordinal not in range(128)", "err": true, "stdout": ""}, {"ex": "open(\"data.bin\", \"wb\", encoding=\"utf-8\")", "note": "у бінарного режиму немає кодування", "out": "ValueError: binary mode doesn't take an encoding argument", "err": true, "stdout": ""}, {"ex": "\"Їжак\".encode() == \"Їжак\".encode(\"utf-8\")", "note": "UTF-8 — кодування за замовчуванням для `encode`", "out": "True", "err": false, "stdout": ""}]}, {"key": "pathlib", "label": "pathlib", "kind": "api", "title": "Модуль pathlib", "tagline": "`Path` — шлях до файлу чи папки як об'єкт: частини шляху, перевірки, обхід папок, читання й запис, створення та видалення.", "chips": ["Path(\"docs\") / \"a.txt\"", "p.name", "p.suffix", "p.parent", "p.exists()", "p.iterdir()", "p.rglob(\"*.jpg\")", "p.mkdir(parents=True)"], "imp": "from pathlib import Path\nfor name in [\"docs/report.pdf\", \"docs/notes.txt\", \"photos/cat.jpg\", \"photos/2024/sea.JPG\", \"readme.md\"]:\n    Path(name).parent.mkdir(parents=True, exist_ok=True)\n    Path(name).write_text(name, encoding=\"utf-8\")\np = Path(\"photos/2024/sea.JPG\")", "props": [{"t": "Оператор /", "d": "`Path(\"docs\") / \"2024\" / \"a.txt\"` збирає шлях із правильним роздільником для ОС. Не склеюйте шляхи рядками через `+`."}, {"t": "Шлях ≠ файл", "d": "`Path(\"x.txt\")` лише описує шлях. Файлу може й не бути — перевіряйте `exists()`."}, {"t": "PosixPath і WindowsPath", "d": "На macOS/Linux об'єкт виводиться як `PosixPath(...)`, на Windows — `WindowsPath(...)` з `\\`. Код однаковий."}, {"t": "Відносні шляхи", "d": "Рахуються від поточної робочої папки (`Path.cwd()`), а не від файлу скрипта. Тому скрипти модуля запускайте з `module05/`."}], "methods": [{"group": "Створення шляху", "name": "Path", "sig": "Path(*parts)", "desc": "Шлях з одного чи кількох рядків.", "ex": "Path(\"docs\", \"notes.txt\")", "out": "PosixPath('docs/notes.txt')", "err": false, "stdout": "", "note": ""}, {"group": "Створення шляху", "name": "/", "sig": "path / \"part\"", "desc": "Склеювання частин.", "ex": "base = Path(\"photos\")\nbase / \"2024\" / \"sea.JPG\"", "out": "PosixPath('photos/2024/sea.JPG')", "err": false, "stdout": "", "note": ""}, {"group": "Створення шляху", "name": "cwd", "sig": "Path.cwd()", "desc": "Поточна робоча папка (абсолютний шлях).", "ex": "Path.cwd().is_absolute()", "out": "True", "err": false, "stdout": "", "note": ""}, {"group": "Створення шляху", "name": "resolve", "sig": "p.resolve()", "desc": "Абсолютний шлях без `..` і `.`.", "ex": "q = Path(\"docs/../photos/cat.jpg\")\nq.resolve().is_absolute(), q.resolve().parent.name", "out": "(True, 'photos')", "err": false, "stdout": "", "note": ""}, {"group": "Частини шляху", "name": "name", "sig": "p.name", "desc": "Ім'я з розширенням.", "ex": "p.name", "out": "'sea.JPG'", "err": false, "stdout": "", "note": ""}, {"group": "Частини шляху", "name": "stem", "sig": "p.stem", "desc": "Ім'я без розширення.", "ex": "p.stem", "out": "'sea'", "err": false, "stdout": "", "note": ""}, {"group": "Частини шляху", "name": "suffix", "sig": "p.suffix", "desc": "Розширення з крапкою.", "ex": "p.suffix, p.suffix.lower()", "out": "('.JPG', '.jpg')", "err": false, "stdout": "", "note": ""}, {"group": "Частини шляху", "name": "suffixes", "sig": "p.suffixes", "desc": "Усі розширення.", "ex": "Path(\"backup.tar.gz\").suffixes", "out": "['.tar', '.gz']", "err": false, "stdout": "", "note": ""}, {"group": "Частини шляху", "name": "parent", "sig": "p.parent", "desc": "Батьківська папка.", "ex": "p.parent, p.parent.parent", "out": "(PosixPath('photos/2024'), PosixPath('photos'))", "err": false, "stdout": "", "note": ""}, {"group": "Частини шляху", "name": "parents", "sig": "p.parents", "desc": "Усі предки знизу вгору.", "ex": "list(p.parents)", "out": "[PosixPath('photos/2024'), PosixPath('photos'), PosixPath('.')]", "err": false, "stdout": "", "note": ""}, {"group": "Частини шляху", "name": "parts", "sig": "p.parts", "desc": "Кортеж частин.", "ex": "p.parts", "out": "('photos', '2024', 'sea.JPG')", "err": false, "stdout": "", "note": ""}, {"group": "Частини шляху", "name": "with_suffix / with_name / with_stem", "sig": "p.with_suffix(\".png\")", "desc": "Новий шлях із заміненою частиною. Файл не перейменовується.", "ex": "p.with_suffix(\".png\"), p.with_name(\"beach.jpg\"), p.with_stem(\"sunset\")", "out": "(PosixPath('photos/2024/sea.png'), PosixPath('photos/2024/beach.jpg'), PosixPath('photos/2024/sunset.JPG'))", "err": false, "stdout": "", "note": ""}, {"group": "Частини шляху", "name": "relative_to", "sig": "p.relative_to(base)", "desc": "Шлях відносно іншої папки.", "ex": "p.relative_to(\"photos\")", "out": "PosixPath('2024/sea.JPG')", "err": false, "stdout": "", "note": ""}, {"group": "Перевірки", "name": "exists", "sig": "p.exists()", "desc": "Чи існує файл або папка.", "ex": "p.exists(), Path(\"nope.txt\").exists()", "out": "(True, False)", "err": false, "stdout": "", "note": ""}, {"group": "Перевірки", "name": "is_file / is_dir", "sig": "p.is_file(), p.is_dir()", "desc": "Файл чи папка.", "ex": "p.is_file(), p.is_dir(), Path(\"docs\").is_dir()", "out": "(True, False, True)", "err": false, "stdout": "", "note": ""}, {"group": "Обхід папок", "name": "iterdir", "sig": "p.iterdir()", "desc": "Вміст однієї папки (без вкладених). Порядок не гарантовано — сортуйте.", "ex": "sorted(Path(\"photos\").iterdir())", "out": "[PosixPath('photos/2024'), PosixPath('photos/cat.jpg')]", "err": false, "stdout": "", "note": ""}, {"group": "Обхід папок", "name": "glob", "sig": "p.glob(pattern)", "desc": "Пошук за шаблоном в одній папці: `*` — будь-які символи, `?` — один символ.", "ex": "sorted(Path(\"docs\").glob(\"*.txt\"))", "out": "[PosixPath('docs/notes.txt')]", "err": false, "stdout": "", "note": ""}, {"group": "Обхід папок", "name": "rglob", "sig": "p.rglob(pattern)", "desc": "Рекурсивний пошук у всіх вкладених папках.", "ex": "sorted(Path(\".\").rglob(\"*.jpg\"))", "out": "[PosixPath('photos/cat.jpg')]", "err": false, "stdout": "", "note": ""}, {"group": "Обхід папок", "name": "glob(\"**/*\")", "sig": "p.glob(\"**/*\")", "desc": "`**` — будь-яка глибина. Те саме, що `rglob(\"*\")`.", "ex": "sorted(x for x in Path(\"photos\").glob(\"**/*\") if x.is_file())", "out": "[PosixPath('photos/2024/sea.JPG'), PosixPath('photos/cat.jpg')]", "err": false, "stdout": "", "note": ""}, {"group": "Обхід папок", "name": "рекурсія", "sig": "def walk(path): ...", "desc": "Свій обхід: папка → `iterdir` → для кожної підпапки знову.", "ex": "def walk(path, depth=0):\n    for el in sorted(path.iterdir()):\n        print(\"    \" * depth + el.name + (\"/\" if el.is_dir() else \"\"))\n        if el.is_dir():\n            walk(el, depth + 1)\n\nwalk(Path(\"photos\"))", "out": "", "err": false, "stdout": "2024/\n    sea.JPG\ncat.jpg\n", "note": ""}, {"group": "Обхід папок", "name": "walk (3.12+)", "sig": "p.walk()", "desc": "Як `os.walk`: для кожної папки — шлях, підпапки, файли.", "ex": "for folder, dirs, files in Path(\"photos\").walk():\n    print(folder, sorted(dirs), sorted(files))", "out": "", "err": false, "stdout": "photos ['2024'] ['cat.jpg']\nphotos/2024 [] ['sea.JPG']\n", "note": ""}, {"group": "Читання й запис", "name": "read_text / write_text", "sig": "p.write_text(s, encoding=...)", "desc": "Відкрити, прочитати/записати, закрити — одним викликом.", "ex": "out = Path(\"hello.txt\")\nout.write_text(\"Привіт\\n\", encoding=\"utf-8\")\nout.read_text(encoding=\"utf-8\")", "out": "'Привіт\\n'", "err": false, "stdout": "", "note": ""}, {"group": "Читання й запис", "name": "read_bytes / write_bytes", "sig": "p.read_bytes()", "desc": "Те саме для байтів.", "ex": "Path(\"docs/notes.txt\").read_bytes()", "out": "b'docs/notes.txt'", "err": false, "stdout": "", "note": ""}, {"group": "Читання й запис", "name": "open", "sig": "p.open(mode, encoding=...)", "desc": "Як вбудований `open`.", "ex": "with Path(\"readme.md\").open(encoding=\"utf-8\") as f:\n    text = f.read()\ntext", "out": "'readme.md'", "err": false, "stdout": "", "note": ""}, {"group": "Інформація", "name": "stat", "sig": "p.stat().st_size", "desc": "Розмір у байтах, час зміни (`st_mtime`) тощо.", "ex": "Path(\"docs/report.pdf\").stat().st_size", "out": "15", "err": false, "stdout": "", "note": ""}, {"group": "Створення й видалення", "name": "mkdir", "sig": "p.mkdir(parents=False, exist_ok=False)", "desc": "Створює папку. `parents=True` — разом із проміжними, `exist_ok=True` — без помилки, якщо вже є.", "ex": "Path(\"backup/2025/04\").mkdir(parents=True, exist_ok=True)\nPath(\"backup/2025/04\").is_dir()", "out": "True", "err": false, "stdout": "", "note": ""}, {"group": "Створення й видалення", "name": "touch", "sig": "p.touch()", "desc": "Створює порожній файл (або оновлює час зміни наявного).", "ex": "Path(\"empty.txt\").touch()\nPath(\"empty.txt\").stat().st_size", "out": "0", "err": false, "stdout": "", "note": ""}, {"group": "Створення й видалення", "name": "rename", "sig": "p.rename(target)", "desc": "Перейменовує або переміщує; повертає новий шлях.", "ex": "new = Path(\"readme.md\").rename(\"about.md\")\nnew, Path(\"readme.md\").exists()", "out": "(PosixPath('about.md'), False)", "err": false, "stdout": "", "note": ""}, {"group": "Створення й видалення", "name": "unlink", "sig": "p.unlink(missing_ok=False)", "desc": "Видаляє файл.", "ex": "Path(\"docs/notes.txt\").unlink()\nsorted(Path(\"docs\").iterdir())", "out": "[PosixPath('docs/report.pdf')]", "err": false, "stdout": "", "note": ""}, {"group": "Створення й видалення", "name": "rmdir", "sig": "p.rmdir()", "desc": "Видаляє лише порожню папку. Для непорожньої — `shutil.rmtree`.", "ex": "Path(\"tmp\").mkdir()\nPath(\"tmp\").rmdir()\nPath(\"tmp\").exists()", "out": "False", "err": false, "stdout": "", "note": ""}], "ops": [{"ex": "Path(\"docs\") + \"/notes.txt\"", "note": "склеюйте через `/`, не `+`", "out": "TypeError: unsupported operand type(s) for +: 'PosixPath' and 'str'", "err": true, "stdout": ""}, {"ex": "Path(\"docs\") / \"notes.txt\" == Path(\"docs/notes.txt\")", "note": "шляхи порівнюються як об'єкти", "out": "True", "err": false, "stdout": ""}, {"ex": "sorted(Path(\".\").rglob(\"*.jpg\"))", "note": "`rglob` чутливий до регістру: `sea.JPG` не знайшовся", "out": "[PosixPath('photos/cat.jpg')]", "err": false, "stdout": ""}, {"ex": "sorted(x for x in Path(\".\").rglob(\"*\") if x.suffix.lower() == \".jpg\")", "note": "фільтр через `suffix.lower()` знаходить усі", "out": "[PosixPath('photos/2024/sea.JPG'), PosixPath('photos/cat.jpg')]", "err": false, "stdout": ""}, {"ex": "Path(\"docs\").mkdir()", "note": "папка вже є — додайте `exist_ok=True`", "out": "FileExistsError: [Errno 17] File exists: 'docs'", "err": true, "stdout": ""}, {"ex": "Path(\"a/b/c\").mkdir()", "note": "проміжних папок немає — додайте `parents=True`", "out": "FileNotFoundError: [Errno 2] No such file or directory: 'a/b/c'", "err": true, "stdout": ""}, {"ex": "Path(\"docs\").rmdir()", "note": "`rmdir` видаляє лише порожні папки", "out": "OSError: [Errno 66] Directory not empty: 'docs'", "err": true, "stdout": ""}, {"ex": "p.with_suffix(\"png\")", "note": "суфікс має починатися з крапки", "out": "ValueError: Invalid suffix 'png'", "err": true, "stdout": ""}, {"ex": "Path(\".bashrc\").suffix, Path(\".bashrc\").stem", "note": "прихований файл без розширення", "out": "('', '.bashrc')", "err": false, "stdout": ""}, {"ex": "Path(\"nope.txt\").read_text(encoding=\"utf-8\")", "note": "`exists()` перевіряйте до читання — або ловіть виключення", "out": "FileNotFoundError: [Errno 2] No such file or directory: 'nope.txt'", "err": true, "stdout": ""}, {"ex": "str(p), p.as_posix()", "note": "рядок, якщо функція не приймає `Path`", "out": "('photos/2024/sea.JPG', 'photos/2024/sea.JPG')", "err": false, "stdout": ""}]}, {"key": "shutil", "label": "shutil", "kind": "api", "title": "Модуль shutil", "tagline": "Операції «як у файловому менеджері»: копіювати й переміщати файли та цілі папки, видаляти дерево, пакувати в архів і розпаковувати.", "chips": ["shutil.copy(src, dst)", "shutil.copytree(src, dst)", "shutil.move(src, dst)", "shutil.rmtree(p)", "shutil.make_archive(...)", "shutil.unpack_archive(...)"], "imp": "import shutil\nfrom pathlib import Path\nfor name in [\"source/netflix.jpg\", \"source/icons/a.png\", \"source/icons/b.png\"]:\n    Path(name).parent.mkdir(parents=True, exist_ok=True)\n    Path(name).write_text(name, encoding=\"utf-8\")\nPath(\"target\").mkdir()", "props": [{"t": "pathlib + shutil", "d": "`pathlib` працює з одним шляхом, `shutil` — з файлами й деревами папок. Обидва приймають і рядки, і `Path`."}, {"t": "copy, copy2, copyfile", "d": "`copyfile` — лише вміст; `copy` — вміст і права доступу, а `dst` може бути папкою; `copy2` — ще й час зміни."}, {"t": "rmtree безповоротний", "d": "Видаляє папку з усім вмістом, без кошика й підтвердження. Перевіряйте шлях перед викликом."}, {"t": "Архіви", "d": "`make_archive` і `unpack_archive` вміють `zip`, `tar`, `gztar`, `bztar`, `xztar` (і `zstdtar` з 3.14). Для читання окремих файлів з архіву — модуль `zipfile`."}], "methods": [{"group": "Копіювання", "name": "copy", "sig": "shutil.copy(src, dst)", "desc": "Копіює файл у файл або в наявну папку. Повертає шлях копії.", "ex": "shutil.copy(\"source/netflix.jpg\", \"target/\")", "out": "'target/netflix.jpg'", "err": false, "stdout": "", "note": ""}, {"group": "Копіювання", "name": "copy з новим ім'ям", "sig": "shutil.copy(src, \"dir/new.jpg\")", "desc": "Якщо `dst` — шлях до файлу, копія отримує це ім'я.", "ex": "shutil.copy(\"source/netflix.jpg\", \"target/logo.jpg\")", "out": "'target/logo.jpg'", "err": false, "stdout": "", "note": ""}, {"group": "Копіювання", "name": "copy2", "sig": "shutil.copy2(src, dst)", "desc": "Як `copy`, але зберігає й час зміни оригіналу.", "ex": "import os\nos.utime(\"source/netflix.jpg\", (0, 0))  # час зміни: 1970-01-01\nshutil.copy(\"source/netflix.jpg\", \"target/a.jpg\")\nshutil.copy2(\"source/netflix.jpg\", \"target/b.jpg\")\nPath(\"target/a.jpg\").stat().st_mtime > 0, Path(\"target/b.jpg\").stat().st_mtime", "out": "(True, 0.0)", "err": false, "stdout": "", "note": ""}, {"group": "Копіювання", "name": "copyfile", "sig": "shutil.copyfile(src, dst)", "desc": "Лише вміст; `dst` — обов'язково шлях до файлу.", "ex": "shutil.copyfile(\"source/netflix.jpg\", \"target/copy.jpg\")", "out": "'target/copy.jpg'", "err": false, "stdout": "", "note": ""}, {"group": "Копіювання", "name": "copytree", "sig": "shutil.copytree(src, dst)", "desc": "Копіює папку з усім вмістом. Цільової папки ще не має бути.", "ex": "shutil.copytree(\"source/icons\", \"target/icons\")\nsorted(Path(\"target/icons\").iterdir())", "out": "[PosixPath('target/icons/a.png'), PosixPath('target/icons/b.png')]", "err": false, "stdout": "", "note": ""}, {"group": "Копіювання", "name": "copytree(dirs_exist_ok)", "sig": "copytree(src, dst, dirs_exist_ok=True)", "desc": "Копіювати в наявну папку.", "ex": "shutil.copytree(\"source/icons\", \"target\", dirs_exist_ok=True)\nsorted(Path(\"target\").iterdir())", "out": "[PosixPath('target/a.png'), PosixPath('target/b.png')]", "err": false, "stdout": "", "note": ""}, {"group": "Копіювання", "name": "copytree(ignore)", "sig": "ignore=shutil.ignore_patterns(\"*.tmp\")", "desc": "Пропустити файли за шаблоном.", "ex": "Path(\"source/icons/cache.tmp\").touch()\nshutil.copytree(\"source\", \"backup\", ignore=shutil.ignore_patterns(\"*.tmp\"))\nsorted(Path(\"backup\").rglob(\"*\"))", "out": "[PosixPath('backup/icons'), PosixPath('backup/icons/a.png'), PosixPath('backup/icons/b.png'), PosixPath('backup/netflix.jpg')]", "err": false, "stdout": "", "note": ""}, {"group": "Переміщення й видалення", "name": "move файлу", "sig": "shutil.move(src, dst)", "desc": "Переміщує (або перейменовує). Повертає новий шлях.", "ex": "shutil.move(\"source/netflix.jpg\", \"target/\")", "out": "'target/netflix.jpg'", "err": false, "stdout": "", "note": ""}, {"group": "Переміщення й видалення", "name": "move папки", "sig": "shutil.move(src_dir, dst)", "desc": "Папка переїжджає з усім вмістом. Якщо `dst` — наявна папка, `src` стає всередині неї.", "ex": "shutil.move(\"source/icons\", \"target/data\")\nsorted(Path(\"target\").rglob(\"*\"))", "out": "[PosixPath('target/data'), PosixPath('target/data/a.png'), PosixPath('target/data/b.png')]", "err": false, "stdout": "", "note": ""}, {"group": "Переміщення й видалення", "name": "rmtree", "sig": "shutil.rmtree(path)", "desc": "Видаляє папку з усім вмістом.", "ex": "shutil.rmtree(\"source\")\nPath(\"source\").exists()", "out": "False", "err": false, "stdout": "", "note": ""}, {"group": "Архіви", "name": "get_archive_formats", "sig": "shutil.get_archive_formats()", "desc": "Доступні формати.", "ex": "[name for name, _ in shutil.get_archive_formats()]", "out": "['bztar', 'gztar', 'tar', 'xztar', 'zip', 'zstdtar']", "err": false, "stdout": "", "note": ""}, {"group": "Архіви", "name": "make_archive", "sig": "shutil.make_archive(base_name, format, root_dir)", "desc": "Пакує вміст `root_dir`. Розширення додається само; повертає абсолютний шлях архіву.", "ex": "archive = shutil.make_archive(\"backup\", \"zip\", \"source\")\nPath(archive).name", "out": "'backup.zip'", "err": false, "stdout": "", "note": ""}, {"group": "Архіви", "name": "вміст zip", "sig": "zipfile.ZipFile(p).namelist()", "desc": "Подивитися, що всередині.", "ex": "import zipfile\nshutil.make_archive(\"backup\", \"zip\", \"source\")\nsorted(zipfile.ZipFile(\"backup.zip\").namelist())", "out": "['icons/', 'icons/a.png', 'icons/b.png', 'netflix.jpg']", "err": false, "stdout": "", "note": ""}, {"group": "Архіви", "name": "unpack_archive", "sig": "shutil.unpack_archive(filename, extract_dir)", "desc": "Розпаковує; формат визначає за розширенням. Папки створює сама.", "ex": "shutil.make_archive(\"backup\", \"zip\", \"source\")\nshutil.unpack_archive(\"backup.zip\", \"restored/2025\")\nsorted(Path(\"restored\").rglob(\"*.png\"))", "out": "[PosixPath('restored/2025/icons/a.png'), PosixPath('restored/2025/icons/b.png')]", "err": false, "stdout": "", "note": ""}, {"group": "Інше", "name": "disk_usage", "sig": "shutil.disk_usage(path)", "desc": "Обсяг диска: `total`, `used`, `free` у байтах.", "ex": "usage = shutil.disk_usage(\".\")\nusage._fields, usage.free < usage.total", "out": "(('total', 'used', 'free'), True)", "err": false, "stdout": "", "note": ""}], "ops": [{"ex": "shutil.copytree(\"source/icons\", \"target\")", "note": "цільова папка вже існує — `dirs_exist_ok=True`", "out": "FileExistsError: [Errno 17] File exists: 'target'", "err": true, "stdout": ""}, {"ex": "shutil.copy(\"source/netflix.jpg\", \"nope/\")", "note": "папки призначення немає", "out": "FileNotFoundError: [Errno 2] No such file or directory: 'nope/'", "err": true, "stdout": ""}, {"ex": "shutil.copy(\"source/icons\", \"target/\")", "note": "`copy` — для файлів, для папок `copytree`", "out": "IsADirectoryError: [Errno 21] Is a directory: 'source/icons'", "err": true, "stdout": ""}, {"ex": "shutil.copyfile(\"source/netflix.jpg\", \"target\")", "note": "`copyfile` не приймає папку", "out": "IsADirectoryError: [Errno 21] Is a directory: 'target'", "err": true, "stdout": ""}, {"ex": "shutil.move(\"source/netflix.jpg\", \"target/\")\nshutil.move(\"source/netflix.jpg\", \"target/\")", "note": "у папці призначення вже є файл з таким ім'ям", "out": "shutil.Error: Destination path 'target/netflix.jpg' already exists", "err": true, "stdout": ""}, {"ex": "Path(\"target/netflix.jpg\").write_text(\"old\", encoding=\"utf-8\")\nshutil.copy(\"source/netflix.jpg\", \"target/\")\nPath(\"target/netflix.jpg\").read_text(encoding=\"utf-8\")", "note": "`copy` мовчки перезаписує файл", "out": "'source/netflix.jpg'", "err": false, "stdout": ""}, {"ex": "shutil.rmtree(\"nope\")", "note": "папки немає", "out": "FileNotFoundError: [Errno 2] No such file or directory: 'nope'", "err": true, "stdout": ""}, {"ex": "shutil.rmtree(\"nope\", ignore_errors=True)\nprint(\"без помилки\")", "note": "`ignore_errors=True` — тиша, якщо папки немає", "out": "", "err": false, "stdout": "без помилки\n"}]}, {"key": "modes", "label": "Режими", "kind": "table", "sep": true, "title": "Режими open()", "tagline": "Другий аргумент `open()`: що робити з файлом (`r`, `w`, `a`, `x`), у якому вигляді (`t` — текст, `b` — байти) і чи дозволено і читати, і писати (`+`).", "imp": "from pathlib import Path\nPath(\"notes.txt\").write_text(\"Перший рядок\\nДругий рядок\\nТретій рядок\\n\", encoding=\"utf-8\")", "tableTitle": "Усі режими", "tableSub": "кожен приклад виконано на свіжому notes.txt", "cols": ["Режим", "Що означає", "Приклад", "Результат"], "groups": [{"name": "Дія", "rows": [{"code": "r", "desc": "Читання (за замовчуванням). Файл має існувати. Курсор на початку.", "ex": "with open(\"notes.txt\", \"r\", encoding=\"utf-8\") as f:\n    line = f.readline()\nline", "out": "'Перший рядок\\n'", "err": false}, {"code": "w", "desc": "Запис. Створює файл або **стирає** наявний.", "ex": "with open(\"notes.txt\", \"w\", encoding=\"utf-8\") as f:\n    f.write(\"нове\")\nPath(\"notes.txt\").read_text(encoding=\"utf-8\")", "out": "'нове'", "err": false}, {"code": "a", "desc": "Дописування в кінець. Створює файл, якщо немає. Писати можна лише в кінець, навіть після `seek`.", "ex": "with open(\"notes.txt\", \"a\", encoding=\"utf-8\") as f:\n    f.write(\"ще\\n\")\nPath(\"notes.txt\").read_text(encoding=\"utf-8\").splitlines()[-1]", "out": "'ще'", "err": false}, {"code": "x", "desc": "Створення нового файлу. Якщо файл є — помилка.", "ex": "open(\"notes.txt\", \"x\", encoding=\"utf-8\")", "out": "FileExistsError: [Errno 17] File exists: 'notes.txt'", "err": true}]}, {"name": "Тип даних", "rows": [{"code": "t", "desc": "Текст (за замовчуванням): `str`, потрібне кодування. `\"r\"` = `\"rt\"`.", "ex": "with open(\"notes.txt\", \"rt\", encoding=\"utf-8\") as f:\n    data = f.read()\ntype(data)", "out": "<class 'str'>", "err": false}, {"code": "b", "desc": "Байти: `bytes`, без кодування. Для картинок, архівів, PDF.", "ex": "with open(\"notes.txt\", \"rb\") as f:\n    data = f.read(12)\ndata, data.decode()", "out": "(b'\\xd0\\x9f\\xd0\\xb5\\xd1\\x80\\xd1\\x88\\xd0\\xb8\\xd0\\xb9', 'Перший')", "err": false}, {"code": "rb  wb  ab  xb", "desc": "Дія + бінарний тип.", "ex": "with open(\"data.bin\", \"wb\") as f:\n    f.write(bytes([1, 2, 255]))\nPath(\"data.bin\").read_bytes()", "out": "b'\\x01\\x02\\xff'", "err": false}]}, {"name": "Читання й запис разом (+)", "rows": [{"code": "r+", "desc": "Читання й запис, файл має існувати, нічого не стирає. Запис іде з позиції курсора — поверх наявного тексту.", "ex": "with open(\"notes.txt\", \"r+\", encoding=\"utf-8\") as f:\n    f.write(\"ПЕРШИЙ\")\nPath(\"notes.txt\").read_text(encoding=\"utf-8\").splitlines()", "out": "['ПЕРШИЙ рядок', 'Другий рядок', 'Третій рядок']", "err": false}, {"code": "w+", "desc": "Як `w` (стирає), але можна й читати. Після запису поверніть курсор `seek(0)`.", "ex": "with open(\"notes.txt\", \"w+\", encoding=\"utf-8\") as f:\n    f.write(\"нове\")\n    f.seek(0)\n    text = f.read()\ntext", "out": "'нове'", "err": false}, {"code": "a+", "desc": "Як `a`, але можна й читати. Курсор стоїть у кінці.", "ex": "with open(\"notes.txt\", \"a+\", encoding=\"utf-8\") as f:\n    f.write(\"кінець\\n\")\n    f.seek(0)\n    lines = f.readlines()\nlen(lines)", "out": "4", "err": false}, {"code": "rb+", "desc": "Байти: змінити окремі байти на місці, не переписуючи файл.", "ex": "Path(\"data.bin\").write_bytes(bytes(4))\nwith open(\"data.bin\", \"rb+\") as f:\n    f.seek(2)\n    f.write(b\"\\xff\")\nPath(\"data.bin\").read_bytes()", "out": "b'\\x00\\x00\\xff\\x00'", "err": false}]}], "notes": ["Обирайте режим за питанням «що станеться з наявним файлом?»: `r` — нічого, `w` — стирається, `a` — дописується, `x` — помилка.", "Якщо файлу немає: `r` і `r+` — `FileNotFoundError`; `w`, `a`, `x` — створюють його. Папки не створює жоден режим.", "`t` і `b` поєднуються з будь-якою дією: `rb`, `wt`, `ab+`. Порядок літер не важливий (`br` = `rb`), але прийнято писати дію першою.", "`+` додає протилежну операцію і нічого більше: `w+` все одно стирає файл."], "sections": [{"name": "Порівняння: файл існує чи ні", "cells": [{"ex": "for mode in [\"r\", \"w\", \"a\", \"x\"]:\n    try:\n        open(\"missing.txt\", mode, encoding=\"utf-8\").close()\n        print(mode, \"→ створено або відкрито\")\n    except OSError as e:\n        print(mode, \"→\", type(e).__name__)\n    Path(\"missing.txt\").unlink(missing_ok=True)", "note": "файлу немає", "out": "", "err": false, "stdout": "r → FileNotFoundError\nw → створено або відкрито\na → створено або відкрито\nx → створено або відкрито\n"}, {"ex": "for mode in [\"r\", \"w\", \"a\", \"x\"]:\n    Path(\"f.txt\").write_text(\"дані\", encoding=\"utf-8\")\n    try:\n        open(\"f.txt\", mode, encoding=\"utf-8\").close()\n        print(mode, \"→\", repr(Path(\"f.txt\").read_text(encoding=\"utf-8\")))\n    except OSError as e:\n        print(mode, \"→\", type(e).__name__)", "note": "файл є: що лишилося після відкриття", "out": "", "err": false, "stdout": "r → 'дані'\nw → ''\na → 'дані'\nx → FileExistsError\n"}, {"ex": "open(\"notes.txt\", \"rw\")", "note": "такого режиму немає — для читання й запису `r+`", "out": "ValueError: must have exactly one of create/read/write/append mode", "err": true, "stdout": ""}, {"ex": "with open(\"notes.txt\", \"a+\", encoding=\"utf-8\") as f:\n    text = f.read()\ntext", "note": "у `a+` курсор у кінці — спершу `seek(0)`", "out": "''", "err": false, "stdout": ""}]}]}, {"key": "errors", "label": "Помилки", "kind": "table", "title": "Виключення при роботі з файлами", "tagline": "Файлові операції залежать від зовнішнього світу: файл можуть видалити, заборонити, зіпсувати. Майже всі ці помилки — нащадки `OSError`.", "imp": "from pathlib import Path\nPath(\"notes.txt\").write_text(\"Перший рядок\\nДругий рядок\\nТретій рядок\\n\", encoding=\"utf-8\")\nPath(\"docs\").mkdir()", "tableTitle": "Типові виключення", "tableSub": "реальні повідомлення CPython на macOS", "cols": ["Виключення", "Коли виникає", "Приклад", "Результат"], "groups": [{"name": "OSError і нащадки", "rows": [{"code": "FileNotFoundError", "desc": "Файлу або папки на шляху немає.", "ex": "open(\"missing.txt\", encoding=\"utf-8\")", "out": "FileNotFoundError: [Errno 2] No such file or directory: 'missing.txt'", "err": true}, {"code": "FileExistsError", "desc": "Файл уже існує: режим `x`, `mkdir` без `exist_ok`.", "ex": "Path(\"docs\").mkdir()", "out": "FileExistsError: [Errno 17] File exists: 'docs'", "err": true}, {"code": "IsADirectoryError", "desc": "Очікували файл, а це папка.", "ex": "open(\"docs\", encoding=\"utf-8\")", "out": "IsADirectoryError: [Errno 21] Is a directory: 'docs'", "err": true}, {"code": "NotADirectoryError", "desc": "Очікували папку, а це файл.", "ex": "list(Path(\"notes.txt\").iterdir())", "out": "NotADirectoryError: [Errno 20] Not a directory: 'notes.txt'", "err": true}, {"code": "PermissionError", "desc": "Немає прав (файл лише для читання, системна папка).", "ex": "Path(\"notes.txt\").chmod(0o444)\nopen(\"notes.txt\", \"w\", encoding=\"utf-8\")", "out": "PermissionError: [Errno 13] Permission denied: 'notes.txt'", "err": true}, {"code": "OSError", "desc": "Батьківський клас усіх наведених вище. Сюди ж — повний диск, задовге ім'я.", "ex": "issubclass(FileNotFoundError, OSError), issubclass(PermissionError, OSError)", "out": "(True, True)", "err": false}]}, {"name": "Кодування", "rows": [{"code": "UnicodeDecodeError", "desc": "Байти не відповідають кодуванню під час читання.", "ex": "Path(\"w.txt\").write_bytes(\"Привіт\".encode(\"cp1251\"))\nPath(\"w.txt\").read_text(encoding=\"utf-8\")", "out": "UnicodeDecodeError: 'utf-8' codec can't decode byte 0xcf in position 0: invalid continuation byte", "err": true}, {"code": "UnicodeEncodeError", "desc": "Символ неможливо записати в обраному кодуванні.", "ex": "with open(\"a.txt\", \"w\", encoding=\"ascii\") as f:\n    f.write(\"Привіт\")", "out": "UnicodeEncodeError: 'ascii' codec can't encode characters in position 0-5: ordinal not in range(128)", "err": true}]}, {"name": "Неправильне використання", "rows": [{"code": "ValueError", "desc": "Операція із закритим файлом; неправильний режим.", "ex": "f = open(\"notes.txt\", encoding=\"utf-8\")\nf.close()\nf.readline()", "out": "ValueError: I/O operation on closed file.", "err": true}, {"code": "io.UnsupportedOperation", "desc": "Читання з файлу, відкритого на запис, і навпаки.", "ex": "with open(\"notes.txt\", \"a\", encoding=\"utf-8\") as f:\n    f.read()", "out": "io.UnsupportedOperation: not readable", "err": true}, {"code": "TypeError", "desc": "Не той тип даних: число замість рядка, `str` у бінарному режимі.", "ex": "with open(\"data.bin\", \"wb\") as f:\n    f.write(\"текст\")", "out": "TypeError: a bytes-like object is required, not 'str'", "err": true}]}], "notes": ["`except OSError` ловить усі файлові помилки разом; окремі класи (`FileNotFoundError`…) — коли реакція різна.", "У виключення є атрибути: `e.filename` — шлях, `e.strerror` — опис від ОС, `e.errno` — код.", "Перевірка `exists()` перед відкриттям не дає гарантії: між перевіркою й `open()` файл можуть видалити. Надійніше відкривати в `try` (принцип EAFP: «простіше попросити вибачення, ніж дозволу»).", "`with` закриває файл і тоді, коли виключення вилітає з блоку, — `finally` з `close()` не потрібен."], "sections": [{"name": "Обробка", "cells": [{"ex": "try:\n    with open(\"config.txt\", encoding=\"utf-8\") as f:\n        config = f.read()\nexcept FileNotFoundError:\n    config = \"default\"\nconfig", "note": "значення за замовчуванням, якщо файлу немає", "out": "'default'", "err": false, "stdout": ""}, {"ex": "try:\n    open(\"missing.txt\", encoding=\"utf-8\")\nexcept OSError as e:\n    print(type(e).__name__, e.errno, e.strerror, e.filename)", "note": "що всередині виключення", "out": "", "err": false, "stdout": "FileNotFoundError 2 No such file or directory missing.txt\n"}, {"ex": "for name in [\"notes.txt\", \"missing.txt\", \"docs\"]:\n    try:\n        with open(name, encoding=\"utf-8\") as f:\n            print(name, \"→\", len(f.read()), \"символів\")\n    except FileNotFoundError:\n        print(name, \"→ немає файлу\")\n    except IsADirectoryError:\n        print(name, \"→ це папка\")", "note": "різна реакція на різні помилки", "out": "", "err": false, "stdout": "notes.txt → 39 символів\nmissing.txt → немає файлу\ndocs → це папка\n"}, {"ex": "try:\n    with open(\"notes.txt\", encoding=\"utf-8\") as f:\n        lines = f.readlines()\nexcept OSError as e:\n    print(f\"Помилка доступу до файлу: {e}\")\nelse:\n    print(\"рядків:\", len(lines))\nfinally:\n    print(\"готово\")", "note": "`else` — якщо помилки не було, `finally` — завжди", "out": "", "err": false, "stdout": "рядків: 3\nготово\n"}, {"ex": "Path(\"w.txt\").write_bytes(\"Привіт\".encode(\"cp1251\"))\nfor enc in [\"utf-8\", \"cp1251\"]:\n    try:\n        text = Path(\"w.txt\").read_text(encoding=enc)\n        break\n    except UnicodeDecodeError:\n        print(enc, \"не підходить\")\ntext", "note": "перебір кодувань", "out": "'Привіт'", "err": false, "stdout": "utf-8 не підходить\n"}, {"ex": "import contextlib\nwith contextlib.suppress(FileNotFoundError):\n    Path(\"tmp.txt\").unlink()\nprint(\"продовжуємо\")", "note": "свідомо ігнорувати помилку", "out": "", "err": false, "stdout": "продовжуємо\n"}]}]}, {"key": "recipes", "label": "Рецепти", "kind": "recipes", "title": "Готові рецепти", "tagline": "Типові задачі з файлами: перші рядки, статистика, журнал, сортування файлів за розширенням, пошук найбільших файлів, резервна копія.", "imp": "import shutil\nfrom pathlib import Path\nPath(\"temp.txt\").write_text(\"\".join(f\"Рядок {i}\\n\" for i in range(1, 8)), encoding=\"utf-8\")\nPath(\"scores.txt\").write_text(\"Олена 95\\nБогдан 87\\nІра 78\\nМакс 91\\n\", encoding=\"utf-8\")\nfor name, size in [(\"picture/logo.png\", 300), (\"picture/Other/cat.JPG\", 1200), (\"picture/Other/dog.jpg\", 800), (\"picture/icons/bot.svg\", 50)]:\n    Path(name).parent.mkdir(parents=True, exist_ok=True)\n    Path(name).write_bytes(bytes(size))", "groups": [{"name": "Текстові файли", "cells": [{"ex": "NUMBER_LINES = 4\nwith open(\"temp.txt\", encoding=\"utf-8\") as f:\n    for _, line in zip(range(NUMBER_LINES), f):\n        print(line.rstrip())", "note": "перші N рядків, не читаючи весь файл", "out": "", "err": false, "stdout": "Рядок 1\nРядок 2\nРядок 3\nРядок 4\n"}, {"ex": "with open(\"temp.txt\", encoding=\"utf-8\") as f:\n    lines = f.readlines()\nprint(\"\".join(lines[-2:]), end=\"\")", "note": "останні N рядків", "out": "", "err": false, "stdout": "Рядок 6\nРядок 7\n"}, {"ex": "text = Path(\"temp.txt\").read_text(encoding=\"utf-8\")\nlen(text.splitlines()), len(text.split()), len(text)", "note": "рядки, слова, символи (як `wc`)", "out": "(7, 14, 56)", "err": false, "stdout": ""}, {"ex": "with open(\"scores.txt\", encoding=\"utf-8\") as f:\n    rows = [line.split() for line in f if line.strip()]\nbest = max(rows, key=lambda r: int(r[1]))\nbest, sum(int(r[1]) for r in rows) / len(rows)", "note": "розбір даних і статистика", "out": "(['Олена', '95'], 87.75)", "err": false, "stdout": ""}, {"ex": "rows = [line.split() for line in Path(\"scores.txt\").read_text(encoding=\"utf-8\").splitlines()]\nrows.sort(key=lambda r: int(r[1]), reverse=True)\nwith open(\"report.txt\", \"w\", encoding=\"utf-8\") as f:\n    for i, (name, score) in enumerate(rows, 1):\n        f.write(f\"{i}. {name:<8}{score:>4}\\n\")\nprint(Path(\"report.txt\").read_text(encoding=\"utf-8\"), end=\"\")", "note": "звіт з вирівнюванням", "out": "", "err": false, "stdout": "1. Олена     95\n2. Макс      91\n3. Богдан    87\n4. Іра       78\n"}, {"ex": "p = Path(\"temp.txt\")\np.write_text(p.read_text(encoding=\"utf-8\").replace(\"Рядок\", \"Line\"), encoding=\"utf-8\")\np.read_text(encoding=\"utf-8\").splitlines()[:2]", "note": "знайти й замінити в файлі", "out": "['Line 1', 'Line 2']", "err": false, "stdout": ""}, {"ex": "def log(message, stamp):\n    with open(\"app.log\", \"a\", encoding=\"utf-8\") as f:\n        f.write(f\"[{stamp}] {message}\\n\")\n\nlog(\"старт\", \"2025-04-05 09:00\")\nlog(\"помилка входу\", \"2025-04-05 09:01\")\nprint(Path(\"app.log\").read_text(encoding=\"utf-8\"), end=\"\")", "note": "журнал подій: режим `a`; у реальному коді `stamp` — `datetime.now()`", "out": "", "err": false, "stdout": "[2025-04-05 09:00] старт\n[2025-04-05 09:01] помилка входу\n"}, {"ex": "with open(\"all.txt\", \"w\", encoding=\"utf-8\") as out:\n    for name in [\"temp.txt\", \"scores.txt\"]:\n        out.write(Path(name).read_text(encoding=\"utf-8\"))\nlen(Path(\"all.txt\").read_text(encoding=\"utf-8\").splitlines())", "note": "об'єднати кілька файлів", "out": "11", "err": false, "stdout": ""}]}, {"name": "Папки й файли", "cells": [{"ex": "def copy_by_ext(source: Path, output: Path) -> None:\n    for el in source.iterdir():\n        if el.is_dir():\n            copy_by_ext(el, output)\n        else:\n            folder = output / el.suffix.lower().lstrip(\".\")\n            folder.mkdir(parents=True, exist_ok=True)\n            shutil.copyfile(el, folder / el.name)\n\ncopy_by_ext(Path(\"picture\"), Path(\"Backup\"))\nsorted(str(p) for p in Path(\"Backup\").rglob(\"*\") if p.is_file())", "note": "сортування за розширенням (як `categorise_files.py`)", "out": "['Backup/jpg/cat.JPG', 'Backup/jpg/dog.jpg', 'Backup/png/logo.png', 'Backup/svg/bot.svg']", "err": false, "stdout": ""}, {"ex": "files = [p for p in Path(\"picture\").rglob(\"*\") if p.is_file()]\nfor p in sorted(files, key=lambda p: p.stat().st_size, reverse=True)[:3]:\n    print(f\"{p.stat().st_size:>6} B  {p}\")", "note": "найбільші файли", "out": "", "err": false, "stdout": "  1200 B  picture/Other/cat.JPG\n   800 B  picture/Other/dog.jpg\n   300 B  picture/logo.png\n"}, {"ex": "from collections import Counter\nCounter(p.suffix.lower() for p in Path(\"picture\").rglob(\"*\") if p.is_file())", "note": "скільки файлів кожного типу", "out": "Counter({'.jpg': 2, '.png': 1, '.svg': 1})", "err": false, "stdout": ""}, {"ex": "sum(p.stat().st_size for p in Path(\"picture\").rglob(\"*\") if p.is_file())", "note": "розмір папки в байтах", "out": "2350", "err": false, "stdout": ""}, {"ex": "def tree(path: Path, prefix: str = \"\") -> None:\n    items = sorted(path.iterdir())\n    for i, el in enumerate(items):\n        last = i == len(items) - 1\n        print(prefix + (\"└── \" if last else \"├── \") + el.name)\n        if el.is_dir():\n            tree(el, prefix + (\"    \" if last else \"│   \"))\n\ntree(Path(\"picture\"))", "note": "дерево папок, як команда `tree`", "out": "", "err": false, "stdout": "├── Other\n│   ├── cat.JPG\n│   └── dog.jpg\n├── icons\n│   └── bot.svg\n└── logo.png\n"}, {"ex": "for i, p in enumerate(sorted(Path(\"picture/Other\").iterdir()), 1):\n    p.rename(p.with_name(f\"photo_{i:03}{p.suffix.lower()}\"))\nsorted(p.name for p in Path(\"picture/Other\").iterdir())", "note": "масове перейменування", "out": "['photo_001.jpg', 'photo_002.jpg']", "err": false, "stdout": ""}, {"ex": "archive = shutil.make_archive(\"picture_backup\", \"zip\", \"picture\")\nshutil.rmtree(\"picture\")\nshutil.unpack_archive(archive, \"picture\")\nsorted(str(p) for p in Path(\"picture\").rglob(\"*.*\"))", "note": "резервна копія в zip і відновлення", "out": "['picture/Other/cat.JPG', 'picture/Other/dog.jpg', 'picture/icons/bot.svg', 'picture/logo.png']", "err": false, "stdout": ""}]}]}]};
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const md = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+
+const KW = new Set("False None True and as assert break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield".split(" "));
+const BI = new Set("abs all any enumerate next open zip bin bool chr dict divmod frozenset hash hex id int isinstance len list max min oct ord pow print range repr reversed round set sorted str sum tuple type".split(" "));
+function hl(code) {
+  const re = /(#[^\n]*)|([rbfRBF]{0,2}(?:'''[\s\S]*?'''|"""[\s\S]*?"""|'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"))|(\b\d[\d_]*(?:\.\d+)?\b)|([A-Za-z_][A-Za-z0-9_]*)/g;
+  let out = "", last = 0, m;
+  while ((m = re.exec(code))) {
+    out += esc(code.slice(last, m.index));
+    const [t, com, str, num, id] = m;
+    if (com) out += `<span class="tk-c">${esc(t)}</span>`;
+    else if (str) out += `<span class="tk-s">${esc(t)}</span>`;
+    else if (num) out += `<span class="tk-n">${esc(t)}</span>`;
+    else if (KW.has(id)) out += `<span class="tk-k">${esc(t)}</span>`;
+    else if (BI.has(id) && code[m.index - 1] !== ".") out += `<span class="tk-b">${esc(t)}</span>`;
+    else out += esc(t);
+    last = m.index + t.length;
+  }
+  return out + esc(code.slice(last));
+}
+function cell(item) {
+  return `<div class="cell">
+    <pre>${hl(item.ex)}</pre>
+    ${item.stdout ? `<div class="stdout">${esc(item.stdout.trimEnd())}</div>` : ""}
+    ${item.out ? `<div class="res${item.err ? " err" : ""}"><span>${item.err ? esc(item.out) : hl(item.out)}</span></div>` : ""}
+    ${item.note ? `<div class="note">${md(item.note)}</div>` : ""}
+  </div>`;
+}
+const impHtml = imp => `<div class="imp-l">Підготовка (виконано перед кожним прикладом)</div><div class="cell imp"><pre>${hl(imp)}</pre></div>`;
+
+function methodsHtml(tab) {
+  let html = "", group = null;
+  for (const m of tab.methods) {
+    if (m.group && m.group !== group) { group = m.group; html += `<div class="m-group" data-g="${esc(group)}">${esc(group)}</div>`; }
+    html += `<div class="m-row" data-q="${esc((m.name + " " + m.desc + " " + m.sig).toLowerCase())}" data-g="${esc(m.group || "")}">
+      <div><div class="m-name">${esc(m.name)}</div><div class="m-sig">${esc(m.sig)}</div></div>
+      <div class="m-desc">${md(m.desc)}</div>
+      ${cell(m)}</div>`;
+  }
+  return html;
+}
+
+function buildApi(tab) {
+  return `
+    <div class="p-head">
+      <div class="p-name small">${esc(tab.label)}</div>
+      <div><p class="p-tag"><b>${esc(tab.title)}.</b> ${md(tab.tagline)}</p>
+        <div class="chips">${tab.chips.map(l => `<span class="chip">${esc(l)}</span>`).join("")}</div></div>
+    </div>
+    ${impHtml(tab.imp)}
+    <section class="s"><div class="s-h"><h2>Ключові властивості</h2></div>
+      <div class="props">${tab.props.map(pr => `<div class="prop"><h3>${esc(pr.t)}</h3><p>${md(pr.d)}</p></div>`).join("")}</div></section>
+    <section class="s"><div class="s-h"><h2>Методи</h2><span class="sub">позицій: ${tab.methods.length}</span><span class="grow"></span>
+      <input class="filter" type="search" placeholder="Пошук методу" aria-label="Пошук методів"></div>
+      <div class="m-list">${methodsHtml(tab)}</div></section>
+    <section class="s"><div class="s-h"><h2>Операції та підводні камені</h2><span class="sub">реальні результати з Python ${DATA.version}</span></div>
+      <div class="ops">${tab.ops.map(cell).join("")}</div></section>`;
+}
+
+function buildTable(tab) {
+  const rows = tab.groups.map(g => `<tr class="fmt-group"><td colspan="4">${esc(g.name)}</td></tr>` + g.rows.map(r =>
+    `<tr><td class="c"><code>${esc(r.code)}</code></td><td class="wrap">${md(r.desc)}</td><td class="ex">${hl(r.ex)}</td><td class="ex out${r.err ? " err" : ""}">${esc(r.out)}</td></tr>`).join("")).join("");
+  return `
+    <div class="p-head">
+      <div class="p-name small">${esc(tab.label)}</div>
+      <div><p class="p-tag"><b>${esc(tab.title)}.</b> ${md(tab.tagline)}</p></div>
+    </div>
+    ${impHtml(tab.imp)}
+    <section class="s"><div class="s-h"><h2>${esc(tab.tableTitle)}</h2><span class="sub">${esc(tab.tableSub)}</span></div>
+      <div class="tbl-scroll"><table class="t fmt"><thead><tr>${tab.cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>
+    </section>
+    <section class="s"><div class="s-h"><h2>На що звернути увагу</h2></div><ul class="notes">${tab.notes.map(n => `<li>${md(n)}</li>`).join("")}</ul></section>
+    ${tab.sections.map(g => `<section class="s"><div class="s-h"><h2>${esc(g.name)}</h2><span class="sub">реальні результати з Python ${DATA.version}</span></div><div class="ops">${g.cells.map(cell).join("")}</div></section>`).join("")}`;
+}
+
+function buildRecipes(tab) {
+  return `
+    <div class="p-head">
+      <div class="p-name small">${esc(tab.label)}</div>
+      <div><p class="p-tag"><b>${esc(tab.title)}.</b> ${md(tab.tagline)}</p></div>
+    </div>
+    ${impHtml(tab.imp)}
+    ${tab.groups.map(g => `<section class="s"><div class="s-h"><h2>${esc(g.name)}</h2></div><div class="ops">${g.cells.map(cell).join("")}</div></section>`).join("")}`;
+}
+
+$("#ver").textContent = `CPython ${DATA.version}`;
+$("#ver2").textContent = DATA.version;
+const TABS = DATA.tabs.map(t => t.key);
+const tablist = $("#tablist"), panels = $("#panels");
+DATA.tabs.forEach((tab, i) => {
+  const b = document.createElement("button");
+  const concept = tab.kind !== "api";
+  b.className = "tab" + (concept ? " concept" : "") + (tab.sep ? " sep" : "");
+  b.id = "tab-" + tab.key; b.setAttribute("role", "tab"); b.setAttribute("aria-controls", "panel-" + tab.key); b.tabIndex = -1;
+  b.textContent = tab.label;
+  b.addEventListener("click", () => select(tab.key, true));
+  tablist.appendChild(b);
+  const p = document.createElement("div");
+  p.className = "panel"; p.id = "panel-" + tab.key; p.setAttribute("role", "tabpanel"); p.setAttribute("aria-labelledby", "tab-" + tab.key); p.hidden = true;
+  p.innerHTML = tab.kind === "table" ? buildTable(tab) : tab.kind === "recipes" ? buildRecipes(tab) : buildApi(tab);
+  const f = $(".filter", p);
+  if (f) f.addEventListener("input", () => {
+    const q = f.value.trim().toLowerCase();
+    const rows = p.querySelectorAll(".m-row");
+    rows.forEach(r => r.hidden = q && !r.dataset.q.includes(q));
+    p.querySelectorAll(".m-group").forEach(g => g.hidden = ![...rows].some(r => r.dataset.g === g.dataset.g && !r.hidden));
+  });
+  panels.appendChild(p);
+});
+tablist.addEventListener("keydown", e => {
+  const i = TABS.indexOf(document.activeElement.id.replace("tab-", ""));
+  if (i < 0) return;
+  let j = null;
+  if (e.key === "ArrowRight") j = (i + 1) % TABS.length;
+  if (e.key === "ArrowLeft") j = (i - 1 + TABS.length) % TABS.length;
+  if (e.key === "Home") j = 0;
+  if (e.key === "End") j = TABS.length - 1;
+  if (j !== null) { e.preventDefault(); select(TABS[j], true); $("#tab-" + TABS[j]).focus(); }
+});
+function select(key, user) {
+  if (!TABS.includes(key)) key = TABS[0];
+  TABS.forEach(k => {
+    const on = k === key;
+    const b = $("#tab-" + k); b.setAttribute("aria-selected", on); b.tabIndex = on ? 0 : -1;
+    $("#panel-" + k).hidden = !on;
+  });
+  if (user) {
+    try { localStorage.setItem("pyfiles-tab", key); } catch (e) {}
+    try { history.replaceState(null, "", "#" + key); } catch (e) {}
+    const t = $(".tabs");
+    if (t.getBoundingClientRect().top <= 1) window.scrollTo({ top: t.offsetTop, behavior: "instant" });
+    $("#tab-" + key).scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
+}
+let initial = location.hash.slice(1);
+if (!TABS.includes(initial)) { try { initial = localStorage.getItem("pyfiles-tab") || ""; } catch (e) { initial = ""; } }
+select(TABS.includes(initial) ? initial : TABS[0], false);
+window.addEventListener("hashchange", () => select(location.hash.slice(1), false));
+</script>
+</body>
+</html>

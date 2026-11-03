@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recursive Folder Walk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Onest:wght@600;800&display=swap">
+<style>
+/* Layout: header; control bar; three columns: source tree | code + call stack | Backup buckets; trace log and notes below. */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --ink: #141a24;
+  --muted: #5a6476;
+  --line: #dbe0e8;
+  --accent: #2354c7;
+  --accent-soft: #e6edfb;
+  --ok: #1f7a4d;
+  --ok-soft: #e1f3e9;
+  --src: #7a5300;
+  --src-soft: #fbefc9;
+  --warn: #b3261e;
+  --warn-soft: #fbe3e1;
+  --cell: #f6f7f9;
+  --kw: #8a3ab9;
+  --fn: #2354c7;
+  --font-display: "Onest", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1218; --surface: #151b24; --ink: #e5e9f0; --muted: #98a2b4; --line: #283141;
+    --accent: #86a8ff; --accent-soft: #1b2740;
+    --ok: #6fd3a0; --ok-soft: #12322d; --src: #f4d27a; --src-soft: #3a2f12;
+    --warn: #ff8a80; --warn-soft: #3a1a1a; --cell: #181d25; --kw: #d7a6ff; --fn: #86a8ff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1218; --surface: #151b24; --ink: #e5e9f0; --muted: #98a2b4; --line: #283141;
+  --accent: #86a8ff; --accent-soft: #1b2740;
+  --ok: #6fd3a0; --ok-soft: #12322d; --src: #f4d27a; --src-soft: #3a2f12;
+  --warn: #ff8a80; --warn-soft: #3a1a1a; --cell: #181d25; --kw: #d7a6ff; --fn: #86a8ff;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-inline: 16px; padding-block: 0 64px;
+}
+.wrap { max-width: 1240px; margin: 0 auto; }
+.m { color: var(--muted); }
+code, .mono { font-family: var(--font-mono); font-size: 0.92em; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+/* header */
+.top { padding-block: 32px 18px; display: flex; flex-wrap: wrap; gap: 12px 32px; align-items: end; justify-content: space-between; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(28px, 4.4vw, 42px); line-height: 1.05; margin: 6px 0 8px; letter-spacing: -0.01em; }
+.lede { margin: 0; color: var(--muted); max-width: 64ch; }
+.formulas { display: grid; gap: 6px; font-family: var(--font-mono); font-size: 14px; }
+.formulas div { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 12px; }
+.formulas b { color: var(--accent); font-weight: 700; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; min-width: 0; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 15px; margin: 0 0 10px; color: var(--muted); letter-spacing: 0.02em; }
+h2 .mono { color: var(--ink); }
+
+/* controls */
+.controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: end; }
+.field { display: grid; gap: 4px; }
+.field .lbl, .field label { font-size: 12px; color: var(--muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.05em; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.seg button { border: 0; border-radius: 0; background: var(--bg); color: var(--muted); }
+.seg button[aria-pressed=true] { background: var(--accent); color: var(--surface); }
+button {
+  font: 600 14px var(--font-body); color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 14px; cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: var(--surface); border-color: var(--accent); min-width: 96px; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.speed { display: flex; align-items: center; gap: 8px; }
+.speed output { font-family: var(--font-mono); font-size: 13px; width: 3.5ch; }
+.hint { margin-top: 10px; font-size: 13px; color: var(--muted); }
+kbd { font-family: var(--font-mono); font-size: 12px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--bg); }
+.stats { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+.stat { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 10px; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.stat b { color: var(--ink); font-size: 15px; font-variant-numeric: tabular-nums; }
+
+/* stage */
+.stage { margin-top: 16px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 1020px) { .stage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .stage .code-col { grid-column: 1 / -1; order: -1; } }
+@media (max-width: 640px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 16px; min-width: 0; }
+
+/* source tree */
+ul.tree { list-style: none; margin: 0; padding: 0; font-family: var(--font-mono); font-size: 13px; }
+ul.tree ul { list-style: none; margin: 0; padding-left: 18px; border-left: 1px dashed var(--line); margin-left: 7px; }
+.row { display: flex; align-items: center; gap: 6px; padding: 2px 6px; border-radius: 4px; border: 1px solid transparent; transition: background .2s, border-color .2s, color .2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .ic { width: 1.2em; text-align: center; color: var(--muted); flex: none; }
+.row.dir { font-weight: 700; }
+.row.open { background: var(--accent-soft); color: var(--accent); }
+.row.open .ic { color: var(--accent); }
+.row.cur { background: var(--src-soft); border-color: var(--src); color: var(--src); }
+.row.copied { color: var(--ok); }
+.row.copied .ic { color: var(--ok); }
+.row.done { color: var(--muted); }
+.row .tag { margin-left: auto; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); }
+
+/* code */
+pre.code { margin: 0; font-family: var(--font-mono); font-size: 13px; line-height: 1.6; overflow-x: auto; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 0; }
+pre.code .ln { display: block; padding: 0 12px 0 0; border-left: 3px solid transparent; transition: background .15s; }
+pre.code .ln .n { display: inline-block; width: 3.2ch; text-align: right; margin-right: 12px; color: var(--muted); user-select: none; }
+pre.code .ln.hl { background: var(--src-soft); border-left-color: var(--src); }
+pre.code .kw { color: var(--kw); font-weight: 700; }
+pre.code .fn { color: var(--fn); font-weight: 700; }
+pre.code .cm { color: var(--muted); font-style: italic; }
+
+/* call stack */
+.stack { display: flex; flex-direction: column-reverse; gap: 6px; min-height: 60px; }
+.frame { border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); padding: 6px 10px; font-family: var(--font-mono); font-size: 13px; animation: push .25s ease-out; }
+.frame .sig { font-weight: 700; display: flex; gap: 8px; align-items: baseline; }
+.frame .sig .d { margin-left: auto; font-size: 11px; font-weight: 500; color: var(--muted); }
+.frame .vars { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.frame .vars b { color: var(--ink); font-weight: 500; }
+.frame.is-top { border-color: var(--accent); background: var(--accent-soft); }
+.frame.is-top .sig { color: var(--accent); }
+.frame.copy { border-style: dashed; }
+.stack-base { font-family: var(--font-mono); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; text-align: center; border-top: 2px solid var(--line); padding-top: 4px; }
+.stack-empty { font-size: 13px; color: var(--muted); text-align: center; padding: 10px 0; }
+@keyframes push { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+
+/* Backup buckets */
+.buckets { display: grid; gap: 10px; }
+.bucket { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; background: var(--bg); animation: push .25s ease-out; }
+.bucket.fresh { border-color: var(--ok); }
+.bucket .bname { font-family: var(--font-mono); font-size: 13px; font-weight: 700; display: flex; gap: 8px; align-items: baseline; }
+.bucket .bname .cnt { margin-left: auto; font-weight: 500; font-size: 11px; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.chip { font-family: var(--font-mono); font-size: 11px; padding: 2px 7px; border-radius: 99px; background: var(--surface); border: 1px solid var(--line); animation: push .25s ease-out; }
+.chip.new { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+.chip.clash { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
+.empty-note { font-size: 13px; color: var(--muted); }
+
+/* trace log */
+.lower { margin-top: 16px; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 860px) { .lower { grid-template-columns: minmax(0, 1fr); } }
+.now { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+.now .phase { font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); background: var(--accent-soft); padding: 2px 8px; border-radius: 99px; }
+.log-scroll { max-height: 320px; overflow-y: auto; }
+ol.log { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; font-family: var(--font-mono); font-size: 13px; }
+ol.log li { padding: 4px 10px; border-left: 3px solid var(--line); background: var(--bg); border-radius: 0 var(--radius) var(--radius) 0; }
+ol.log li.call { border-left-color: var(--accent); }
+ol.log li.ret { border-left-color: var(--muted); color: var(--muted); }
+ol.log li.copy { border-left-color: var(--ok); }
+ol.log li.warn { border-left-color: var(--warn); color: var(--warn); }
+ol.log li.final { border-left-color: var(--ok); color: var(--ok); font-weight: 700; }
+ol.log li.active { outline: 1px solid var(--accent); }
+ol.log .m { color: var(--muted); }
+.notes ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 14px; }
+.notes li::marker { color: var(--muted); font-family: var(--font-mono); }
+
+@media (prefers-reduced-motion: reduce) { .frame, .bucket, .chip { animation: none; } .row, pre.code .ln { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Module 05 · Files · Recursion</div>
+      <h1>Recursive folder walk</h1>
+      <p class="lede"><code>read_folder</code> loops over a folder. A file goes to <code>copy_file</code>, which puts it into <code>Backup/&lt;extension&gt;/</code>. A folder makes the function <b>call itself</b> on that folder. Python pauses the current call, finishes the inner one, then carries on with the loop where it stopped. Watch the call stack grow and shrink.</p>
+    </div>
+    <div class="formulas">
+      <div>recursive step: <b>if el.is_dir(): read_folder(el)</b></div>
+      <div>base case: <b>a folder with no subfolders</b></div>
+      <div>the loop ends with no new call → <b>return</b></div>
+    </div>
+  </header>
+
+  <section class="card">
+    <div class="controls">
+      <div class="field">
+        <span class="lbl">Source tree</span>
+        <div class="seg" role="group" aria-label="Source tree">
+          <button id="tPicture" aria-pressed="true">picture/ (1 level)</button>
+          <button id="tNested" aria-pressed="false">nested (3 levels)</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="speed">Speed</label>
+        <div class="speed"><input id="speed" type="range" min="0.25" max="4" step="0.25" value="1"><output id="speedOut">1×</output></div>
+      </div>
+      <div class="btns">
+        <button id="play" class="primary">▶ Play</button>
+        <button id="step" title="Run to the next event">Step ⏭</button>
+        <button id="skip" title="Show the final result instantly">Skip to end</button>
+        <button id="reset">Reset</button>
+      </div>
+      <div class="stats">
+        <span class="stat">read_folder calls <b id="sCalls">0</b></span>
+        <span class="stat">files copied <b id="sFiles">0</b></span>
+        <span class="stat">stack depth <b id="sDepth">0</b> / max <b id="sMax">0</b></span>
+      </div>
+    </div>
+    <div class="hint"><kbd>Space</kbd> play / pause · <kbd>→</kbd> next step · <kbd>R</kbd> reset</div>
+  </section>
+
+  <div class="stage">
+    <section class="card">
+      <h2>Source · <span class="mono" id="srcName">picture/</span></h2>
+      <ul class="tree" id="tree"></ul>
+    </section>
+
+    <div class="col code-col">
+      <section class="card">
+        <h2>categorise_files.py</h2>
+        <pre class="code" id="code"></pre>
+      </section>
+      <section class="card">
+        <h2>Call stack <span class="m">(top = running now)</span></h2>
+        <div class="stack" id="stack"></div>
+      </section>
+    </div>
+
+    <section class="card">
+      <h2>Output · <span class="mono">Backup/</span></h2>
+      <div class="buckets" id="buckets"></div>
+    </section>
+  </div>
+
+  <div class="lower">
+    <section class="card">
+      <div class="now"><h2 style="margin:0">Trace</h2><span class="phase" id="phase">ready</span></div>
+      <div class="log-scroll" id="logScroll"><ol class="log" id="log"></ol></div>
+    </section>
+    <section class="card notes">
+      <h2>Things to notice</h2>
+      <ol>
+        <li>There is no <code>if … return</code>. The base case is a folder with no subfolders: the loop runs out without calling <code>read_folder</code> again, so the call returns.</li>
+        <li>The indentation in the trace matches the stack depth. Every call returns to the exact loop it came from.</li>
+        <li><code>file.suffix</code> is case-sensitive and copied as is: <code>.PNG</code> and <code>.png</code>, <code>.jpeg</code> and <code>.jpg</code> end up in different folders.</li>
+        <li>Folder names start with a dot (<code>Backup/.png</code>), so <code>ls</code> and Finder hide them by default.</li>
+        <li>Two files with the same name from different folders: the second <code>copyfile</code> silently overwrites the first.</li>
+        <li>A file with no extension has <code>suffix == ""</code>, so it lands straight in <code>Backup/</code>.</li>
+      </ol>
+    </section>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// ---------- sample trees ----------
+const f = name => ({ name, dir: false });
+const d = (name, children) => ({ name, dir: true, children });
+const TREES = {
+  picture: d("picture", [
+    f("bot-icon.png"),
+    d("Logo", [f("ibm.svg"), f("logo.png"), f("netflix.jpg")]),
+    f("photo_2018.jpg"),
+    d("icons", [f("mongodb.jpg"), f("logo.png")]),
+    d("Other", [f("schedule.png"), f("SQL-MongoDB.PNG")]),
+    d("wallpaper", [f("js.png"), f("3760d167.jpeg")]),
+  ]),
+  nested: d("picture", [
+    f("cover.jpg"),
+    d("2023", [
+      f("notes"),
+      d("summer", [f("beach.jpg"), d("raw", [f("IMG_001.PNG")]), f("sunset.png")]),
+      d("drafts", []),
+    ]),
+    d("2024", [d("winter", [f("ski.jpeg")])]),
+    f("logo.svg"),
+  ]),
+};
+let treeKey = "picture";
+let root;
+function prepare(node, parent) {
+  node.path = parent ? `${parent.path}/${node.name}` : node.name;
+  node.parent = parent;
+  if (node.dir) node.children.forEach(c => prepare(c, node));
+  return node;
+}
+const suffix = name => { const i = name.lastIndexOf("."); return i > 0 ? name.slice(i) : ""; };
+
+// ---------- tree view (rendered recursively, of course) ----------
+function renderTree(node) {
+  const li = document.createElement("li");
+  const row = document.createElement("div");
+  row.className = "row" + (node.dir ? " dir" : "");
+  row.innerHTML = `<span class="ic">${node.dir ? "▸" : "·"}</span><span>${node.name}${node.dir ? "/" : ""}</span><span class="tag"></span>`;
+  node.row = row;
+  li.appendChild(row);
+  if (node.dir && node.children.length) {
+    const ul = document.createElement("ul");
+    node.children.forEach(c => ul.appendChild(renderTree(c)));
+    li.appendChild(ul);
+  }
+  return li;
+}
+let curNode = null;
+function setCur(node) {
+  if (curNode) curNode.row.classList.remove("cur");
+  curNode = node;
+  if (node) node.row.classList.add("cur");
+}
+function setOpen(node, on, depth) {
+  node.row.classList.toggle("open", on);
+  node.row.querySelector(".ic").textContent = on ? "▾" : "▸";
+  node.row.querySelector(".tag").textContent = on ? `frame ${depth}` : "";
+}
+
+// ---------- code ----------
+const CODE = [
+  [11, "def read_folder(path: Path) -> None:"],
+  [12, "    for el in path.iterdir():"],
+  [13, "        if el.is_dir():"],
+  [14, "            read_folder(el)"],
+  [15, "        else:"],
+  [16, "            copy_file(el)"],
+  [17, ""],
+  [18, ""],
+  [19, "def copy_file(file: Path) -> None:"],
+  [20, "    ext = file.suffix"],
+  [21, "    new_path = output_folder / ext"],
+  [22, "    new_path.mkdir(exist_ok=True, parents=True)"],
+  [23, "    copyfile(file, new_path / file.name)"],
+  [24, ""],
+  [25, ""],
+  [26, "output_folder = Path(output)  # dist"],
+  [27, "read_folder(Path(source))"],
+];
+const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function highlight(src) {
+  const [code, comment] = src.split(/(?=#)/);
+  let h = esc(code)
+    .replace(/\b(def|for|in|if|else)\b/g, '<span class="kw">$1</span>')
+    .replace(/\b(read_folder|copy_file)\b/g, '<span class="fn">$1</span>');
+  if (comment) h += `<span class="cm">${esc(comment)}</span>`;
+  return h;
+}
+$("code").innerHTML = CODE.map(([n, s]) => `<span class="ln" data-n="${n}"><span class="n">${n}</span>${highlight(s)}</span>`).join("");
+function hl(n) {
+  $("code").querySelectorAll(".ln").forEach(l => l.classList.toggle("hl", +l.dataset.n === n));
+}
+
+// ---------- call stack ----------
+let stack = [];
+function renderStack() {
+  const box = $("stack");
+  const keep = new Map([...box.querySelectorAll(".frame")].map(e => [e.dataset.key, e]));
+  box.innerHTML = "";
+  box.insertAdjacentHTML("beforeend", `<div class="stack-base">module level · line 27</div>`);
+  if (!stack.length) box.insertAdjacentHTML("beforeend", `<div class="stack-empty">empty</div>`);
+  stack.forEach((fr, i) => {
+    const e = keep.get(fr.key) || document.createElement("div");
+    e.dataset.key = fr.key;
+    e.className = "frame" + (fr.fn === "copy_file" ? " copy" : "") + (i === stack.length - 1 ? " is-top" : "");
+    const vars = fr.fn === "read_folder"
+      ? `path = <b>${fr.node.path}</b>${fr.el ? ` · el = <b>${fr.el.name}${fr.el.dir ? "/" : ""}</b>` : ""}`
+      : `file = <b>${fr.node.name}</b>${fr.ext !== undefined ? ` · ext = <b>'${fr.ext}'</b>` : ""}`;
+    e.innerHTML = `<div class="sig">${fr.fn}()<span class="d">depth ${i + 1}</span></div><div class="vars">${vars}</div>`;
+    box.appendChild(e);
+  });
+  $("sDepth").textContent = stack.length;
+  maxDepth = Math.max(maxDepth, stack.length);
+  $("sMax").textContent = maxDepth;
+}
+const topFrame = () => stack[stack.length - 1];
+
+// ---------- Backup buckets ----------
+let buckets = new Map();
+function bucketLabel(ext) { return ext ? `Backup/${ext}/` : "Backup/ (no extension)"; }
+function ensureBucket(ext) {
+  if (buckets.has(ext)) return false;
+  $("buckets").querySelector(".empty-note")?.remove();
+  const b = document.createElement("div");
+  b.className = "bucket fresh";
+  b.innerHTML = `<div class="bname">${bucketLabel(ext)}<span class="cnt">0</span></div><div class="chips"></div>`;
+  $("buckets").appendChild(b);
+  buckets.set(ext, { el: b, files: new Map() });
+  return true;
+}
+function addChip(ext, node) {
+  const b = buckets.get(ext);
+  b.el.classList.remove("fresh");
+  $("buckets").querySelectorAll(".chip.new").forEach(c => c.classList.remove("new"));
+  const old = b.files.get(node.name);
+  if (old) {
+    old.className = "chip clash";
+    old.title = `overwritten by ${node.path}`;
+    old.textContent = `${node.name} ← ${node.parent.path}`;
+  } else {
+    const c = document.createElement("span");
+    c.className = "chip new";
+    c.textContent = node.name;
+    c.title = `from ${node.path}`;
+    b.el.querySelector(".chips").appendChild(c);
+    b.files.set(node.name, c);
+  }
+  b.el.querySelector(".cnt").textContent = `${b.files.size} file${b.files.size === 1 ? "" : "s"}`;
+  return !!old;
+}
+
+// ---------- trace ----------
+function phase(name) { $("phase").textContent = name; }
+function logAdd(html, cls, depth = stack.length) {
+  const log = $("log");
+  log.querySelectorAll("li.active").forEach(li => li.classList.remove("active"));
+  const li = document.createElement("li");
+  li.innerHTML = html;
+  li.className = (cls || "") + " active";
+  li.style.marginLeft = `${Math.max(0, depth - 1) * 16}px`;
+  log.appendChild(li);
+  const box = $("logScroll");
+  box.scrollTop = box.scrollHeight;
+  return li;
+}
+
+// ---------- animation engine (pause / step / cancel) ----------
+class Cancelled extends Error {}
+let runId = 0, paused = true, stepping = false, running = false, finished = false, instant = false;
+let speedVal = 1;
+let wakers = [];
+const wake = () => { const w = wakers; wakers = []; w.forEach(fn => fn()); };
+const guard = id => { if (id !== runId) throw new Cancelled(); };
+async function hold(id) {
+  while (paused) { await new Promise(r => wakers.push(r)); guard(id); }
+  guard(id);
+}
+const frame = () => new Promise(r => requestAnimationFrame(r));
+async function wait(id, ms) {
+  if (instant) return;
+  let t = 0, last = null;
+  while (t < ms && !instant) {
+    if (paused) { await hold(id); last = null; }
+    const now = await frame(); guard(id);
+    if (last !== null) t += (now - last) * speedVal;
+    last = now;
+  }
+}
+async function checkpoint(id) {
+  guard(id);
+  if (stepping && !instant) { paused = true; syncButtons(); await hold(id); }
+}
+
+// ---------- the algorithm, animated ----------
+let calls = 0, copied = 0, maxDepth = 0, keySeq = 0;
+
+async function readFolder(id, node) {
+  const caller = topFrame();
+  stack.push({ key: "k" + keySeq++, fn: "read_folder", node, el: null });
+  calls++; $("sCalls").textContent = calls;
+  renderStack();
+  setOpen(node, true, stack.length);
+  setCur(null);
+  hl(11);
+  phase(`read_folder · depth ${stack.length}`);
+  logAdd(`→ call <b>read_folder(${node.path})</b> <span class="m">depth ${stack.length}</span>`, "call");
+  await wait(id, 600);
+  await checkpoint(id);
+
+  hl(12);
+  if (!node.children.length) {
+    logAdd(`${node.path} is empty → loop body never runs`, "m");
+    await wait(id, 600);
+    await checkpoint(id);
+  }
+  for (const el of node.children) {
+    topFrame().el = el; renderStack();
+    hl(12); setCur(el);
+    await wait(id, 350);
+    hl(13);
+    await wait(id, 300);
+    if (el.dir) {
+      hl(14);
+      logAdd(`${el.name}/ is a folder → pause this loop and recurse`);
+      await wait(id, 500);
+      await checkpoint(id);
+      await readFolder(id, el);
+      hl(14); setCur(el);
+      phase(`read_folder · depth ${stack.length}`);
+      logAdd(`back in read_folder(${node.path}) → continue after ${el.name}/`, "ret");
+      await wait(id, 500);
+      await checkpoint(id);
+    } else {
+      hl(16);
+      await wait(id, 250);
+      await copyFile(id, el);
+    }
+  }
+
+  hl(12); setCur(null);
+  logAdd(`loop over ${node.path} finished → return to ${caller ? `read_folder(${caller.node.path})` : "module level"}`, "ret");
+  await wait(id, 500);
+  setOpen(node, false);
+  node.row.classList.add("done");
+  stack.pop(); renderStack();
+  await checkpoint(id);
+}
+
+async function copyFile(id, node) {
+  const fr = { key: "k" + keySeq++, fn: "copy_file", node };
+  stack.push(fr); renderStack();
+  phase("copy_file");
+  const ext = suffix(node.name);
+  hl(20);
+  fr.ext = ext; renderStack();
+  await wait(id, 300);
+  hl(21);
+  await wait(id, 250);
+  hl(22);
+  const created = ensureBucket(ext);
+  await wait(id, created ? 400 : 200);
+  hl(23);
+  const clash = addChip(ext, node);
+  copied++; $("sFiles").textContent = copied;
+  node.row.classList.add("copied");
+  const dest = ext ? `Backup/${ext}/${node.name}` : `Backup/${node.name}`;
+  if (clash) logAdd(`copy ${node.name} → ${dest} <b>overwrites</b> the earlier ${node.name}!`, "warn");
+  else logAdd(`copy ${node.name} → ${dest}${created ? ` <span class="m">(mkdir ${bucketLabel(ext)})</span>` : ""}`, "copy");
+  await wait(id, 450);
+  stack.pop(); renderStack();
+  await checkpoint(id);
+}
+
+async function run() {
+  const id = ++runId;
+  running = true; finished = false;
+  try {
+    hl(27);
+    phase("start");
+    logAdd(`read_folder(Path("${root.name}"))`, "m", 1);
+    await wait(id, 400);
+    await readFolder(id, root);
+    hl(27); setCur(null);
+    phase("done");
+    logAdd(`Done: ${calls} read_folder calls, ${copied} files copied, max stack depth ${maxDepth}`, "final", 1);
+    finished = true;
+  } catch (e) {
+    if (!(e instanceof Cancelled)) throw e;
+    return;
+  }
+  running = false; paused = true; stepping = false; instant = false;
+  syncButtons();
+}
+
+// ---------- controls ----------
+function syncButtons() {
+  $("play").textContent = (!paused && running) ? "⏸ Pause" : (finished ? "↻ Replay" : "▶ Play");
+}
+function reset() {
+  runId++; wake();
+  running = false; paused = true; stepping = false; instant = false; finished = false;
+  root = prepare(structuredClone(TREES[treeKey]), null);
+  $("tree").innerHTML = ""; $("tree").appendChild(renderTree(root));
+  $("srcName").textContent = root.name + "/";
+  curNode = null; stack = []; buckets = new Map();
+  calls = 0; copied = 0; maxDepth = 0; keySeq = 0;
+  $("sCalls").textContent = 0; $("sFiles").textContent = 0;
+  renderStack();
+  $("buckets").innerHTML = `<div class="empty-note">Nothing copied yet.</div>`;
+  $("log").innerHTML = "";
+  logAdd("Press Play to start, or Step to go one event at a time.", "m", 1);
+  hl(27); phase("ready");
+  syncButtons();
+}
+function startIfNeeded() {
+  if (finished) reset();
+  if (!running) run();
+}
+function play() {
+  if (running && !paused) { paused = true; syncButtons(); return; }
+  stepping = false; paused = false;
+  startIfNeeded(); wake(); syncButtons();
+}
+function step() {
+  stepping = true; paused = false;
+  startIfNeeded(); wake(); syncButtons();
+}
+function skip() {
+  if (finished) reset();
+  instant = true; stepping = false; paused = false;
+  startIfNeeded(); wake(); syncButtons();
+}
+function setTree(k) {
+  treeKey = k;
+  $("tPicture").setAttribute("aria-pressed", k === "picture");
+  $("tNested").setAttribute("aria-pressed", k === "nested");
+  reset();
+}
+
+$("play").onclick = play;
+$("step").onclick = step;
+$("skip").onclick = skip;
+$("reset").onclick = reset;
+$("tPicture").onclick = () => setTree("picture");
+$("tNested").onclick = () => setTree("nested");
+$("speed").addEventListener("input", e => { speedVal = +e.target.value; $("speedOut").textContent = speedVal + "×"; });
+document.addEventListener("keydown", e => {
+  if (e.target.matches("input, textarea")) return;
+  if (e.key === " ") { e.preventDefault(); play(); }
+  else if (e.key === "ArrowRight") { e.preventDefault(); step(); }
+  else if (e.key === "r" || e.key === "R") reset();
+});
+
+reset();
+</script>
+</body>
+</html>
