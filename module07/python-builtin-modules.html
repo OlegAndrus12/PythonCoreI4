@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Шпаргалка: колекції, Decimal, генератори</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Onest:wght@600;800&display=swap">
+<style>
+/* Layout: tabbed cheatsheet. Sticky tab rail of types; each panel = header, properties, methods, REPL cells. */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --ink: #141a24;
+  --muted: #5a6476;
+  --line: #dbe0e8;
+  --accent: #2354c7;
+  --accent-soft: #e6edfb;
+  --err: #b4322b;
+  --err-soft: #fbeceb;
+  --ok: #1f7a4d;
+  /* memory roles */
+  --m-gc: #eceef2;   --m-gc-ink: #6b7384;
+  --m-head: #dfe7f7; --m-head-ink: #23407f;
+  --m-meta: #ece3f7; --m-meta-ink: #5a3290;
+  --m-ptr: #d9f0ec;  --m-ptr-ink: #105e52;
+  --m-data: #fbefc9; --m-data-ink: #7a5300;
+  --m-empty: #f6f7f9; --m-empty-ink: #9aa2b1;
+  --font-display: "Onest", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1218; --surface: #151b24; --ink: #e5e9f0; --muted: #98a2b4; --line: #283141;
+    --accent: #86a8ff; --accent-soft: #1b2740; --err: #ff8a80; --err-soft: #3a1d1d; --ok: #6fd3a0;
+    --m-gc: #1d222b; --m-gc-ink: #8d96a7;
+    --m-head: #1b2a48; --m-head-ink: #a9c1f7;
+    --m-meta: #2b2140; --m-meta-ink: #cdb4f5;
+    --m-ptr: #12322d; --m-ptr-ink: #8fe0d1;
+    --m-data: #3a2f12; --m-data-ink: #f4d27a;
+    --m-empty: #181d25; --m-empty-ink: #5f6878;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1218; --surface: #151b24; --ink: #e5e9f0; --muted: #98a2b4; --line: #283141;
+  --accent: #86a8ff; --accent-soft: #1b2740; --err: #ff8a80; --err-soft: #3a1d1d; --ok: #6fd3a0;
+  --m-gc: #1d222b; --m-gc-ink: #8d96a7;
+  --m-head: #1b2a48; --m-head-ink: #a9c1f7;
+  --m-meta: #2b2140; --m-meta-ink: #cdb4f5;
+  --m-ptr: #12322d; --m-ptr-ink: #8fe0d1;
+  --m-data: #3a2f12; --m-data-ink: #f4d27a;
+  --m-empty: #181d25; --m-empty-ink: #5f6878;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-inline: 16px; padding-block: 0 64px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; }
+code, pre, .mono { font-family: var(--font-mono); font-size: 0.9em; font-variant-ligatures: none; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+/* header */
+.top { padding-block: 32px 18px; display: flex; flex-wrap: wrap; gap: 12px 32px; align-items: end; justify-content: space-between; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(28px, 4.4vw, 42px); line-height: 1.05; margin: 6px 0 8px; letter-spacing: -0.01em; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); max-width: 62ch; }
+.key-legend { display: flex; gap: 16px; font-size: 13px; color: var(--muted); }
+.key-legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+/* tabs */
+.tabs {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg); border-bottom: 1px solid var(--line);
+  margin-inline: -16px; padding-inline: 16px;
+}
+.tablist { max-width: 1180px; margin: 0 auto; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.tablist::-webkit-scrollbar { display: none; }
+.tab {
+  appearance: none; border: 0; background: none; cursor: pointer; color: var(--muted);
+  font-family: var(--font-mono); font-size: 15px; font-weight: 500;
+  padding: 12px 14px 11px; border-bottom: 3px solid transparent; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 700; }
+.dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid currentColor; flex: none; }
+.dot.mut { background: currentColor; }
+.tab .dot { color: var(--accent); }
+
+/* panel header */
+.panel { padding-block: 28px 0; }
+.p-head { display: grid; grid-template-columns: auto 1fr; gap: 6px 28px; align-items: start; }
+.p-name { font-family: var(--font-mono); font-weight: 700; font-size: clamp(44px, 8vw, 76px); line-height: 0.95; letter-spacing: -0.03em; color: var(--accent); }
+.p-tag { font-size: 18px; margin: 4px 0 12px; max-width: 60ch; text-wrap: pretty; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-family: var(--font-mono); font-size: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; }
+.flags { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 14px; font-size: 13px; }
+.flag { display: inline-flex; gap: 6px; align-items: baseline; }
+.flag b { font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; font-size: 11px; color: var(--muted); }
+.flag .yes { color: var(--ok); font-weight: 600; }
+.flag .no { color: var(--muted); }
+@media (max-width: 640px) { .p-head { grid-template-columns: 1fr; } }
+
+/* sections */
+section.s { margin-top: 40px; }
+.s-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 18px; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 22px; margin: 0; letter-spacing: -0.005em; }
+.s-h .sub { color: var(--muted); font-size: 13px; }
+.s-h .grow { flex: 1; }
+
+/* properties */
+.props { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 18px 36px; }
+.prop { min-width: 0; padding-top: 10px; border-top: 1px solid var(--line); }
+.prop h3 { font-size: 15px; font-weight: 600; margin: 0 0 3px; }
+.prop p { margin: 0; color: var(--muted); font-size: 14px; }
+.prop code, .notes code, .m-desc code { color: var(--ink); background: var(--surface); border: 1px solid var(--line); padding: 0 4px; border-radius: 3px; font-size: 0.86em; }
+
+/* methods */
+.filter { font-family: var(--font-mono); font-size: 14px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); width: min(100%, 16em); }
+.m-group { font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; color: var(--muted); margin: 22px 0 6px; }
+.m-group:first-child { margin-top: 0; }
+.m-row { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr) minmax(0, 1.25fr); gap: 6px 24px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.m-name { font-family: var(--font-mono); font-weight: 700; font-size: 15px; }
+.m-sig { font-family: var(--font-mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; margin-top: 2px; }
+.m-desc { font-size: 14px; }
+.m-empty { color: var(--muted); padding: 12px 0; }
+@media (max-width: 900px) { .m-row { grid-template-columns: 1fr; } }
+.m-note { font-size: 14px; color: var(--muted); margin: -6px 0 12px; }
+
+/* code cells */
+.cell { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.cell pre { margin: 0; padding: 8px 12px; overflow-x: auto; font-size: 13px; line-height: 1.5; }
+.cell .res { border-top: 1px dashed var(--line); padding: 6px 12px; font-family: var(--font-mono); font-size: 13px; overflow-x: auto; white-space: pre; display: flex; gap: 8px; }
+.cell .res::before { content: "→"; color: var(--muted); flex: none; }
+.cell .res.err { background: var(--err-soft); color: var(--err); }
+.cell .res.err::before { content: "✕"; }
+.cell .stdout { padding: 4px 12px 0; font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); white-space: pre; }
+.cell .stdout::before { content: "виводить: "; font-family: var(--font-body); }
+.cell .note { padding: 0 12px 8px; font-size: 12.5px; color: var(--muted); }
+.ops { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 12px; }
+.ops .cell .note { padding-top: 6px; }
+.tk-k { color: var(--m-meta-ink); font-weight: 500; }
+.tk-s { color: var(--ok); }
+.tk-n { color: var(--m-data-ink); }
+.tk-b { color: var(--accent); }
+.tk-c { color: var(--muted); font-style: italic; }
+
+/* truth table + compare */
+.tbl-scroll { overflow-x: auto; }
+table.t { border-collapse: collapse; font-size: 14px; width: 100%; }
+table.t th, table.t td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.t th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+table.t td.n { font-family: var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; }
+table.t td.y { color: var(--ok); font-weight: 600; }
+table.t td.x { color: var(--muted); }
+table.t td code { font-weight: 700; }
+table.t tbody tr:hover { background: var(--surface); }
+.truth td { font-family: var(--font-mono); text-align: center; }
+.truth th { text-align: center; }
+
+footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+footer p { margin: 0 0 4px; max-width: 80ch; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .panel { animation: rise 0.22s ease-out; }
+  @keyframes rise { from { transform: translateY(4px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+}
+/* concept tabs: mutability, typing, precedence, collections */
+.tab.concept { font-family: var(--font-body); }
+.tab.sep { margin-left: auto; }
+table.t th .mono { text-transform: none; letter-spacing: 0; }
+.callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 10px 14px; border-radius: 0 var(--radius) var(--radius) 0; font-size: 14px; max-width: 76ch; margin: 0; }
+.callout code, .fig .cap code, .mk-n code, .fq code, td.wrap code { background: var(--surface); border: 1px solid var(--line); padding: 0 4px; border-radius: 3px; font-size: 0.86em; }
+.fine { color: var(--muted); font-size: 13px; max-width: 80ch; margin: 12px 0 0; }
+.fine p { margin: 2px 0; }
+
+.figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 16px; }
+.fig { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.fig h3 { font-size: 14px; font-weight: 600; margin: 0 0 10px; }
+.fig svg { display: block; width: 100%; height: auto; }
+.fig .cap { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+.fig svg text { font-family: var(--font-mono); font-size: 13px; fill: var(--ink); }
+.fig svg .sv-h { font-family: var(--font-body); font-size: 12px; fill: var(--muted); }
+.fig svg .sv-sub { font-size: 11px; fill: var(--muted); }
+.n-name { fill: var(--m-head); stroke: var(--m-head-ink); }
+.t-name { fill: var(--m-head-ink) !important; font-weight: 700; }
+.n-obj { fill: var(--m-data); stroke: var(--m-data-ink); }
+.n-new { fill: var(--m-ptr); stroke: var(--m-ptr-ink); }
+.n-lit { fill: var(--surface); stroke: var(--muted); }
+.n-off { fill: var(--m-empty); stroke: var(--line); }
+.n-hit { fill: var(--m-ptr); stroke: var(--ok); stroke-width: 2; }
+.edge { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.edge.hot { stroke: var(--ok); stroke-width: 2; }
+.ah { fill: var(--muted); }
+.ah.hot { fill: var(--ok); }
+.sv-ok { fill: var(--ok) !important; font-weight: 700; }
+.divider { stroke: var(--line); stroke-dasharray: 4 4; }
+
+/* group colours (precedence) */
+.g-acc { --g: var(--m-gc); --gi: var(--m-gc-ink); }
+.g-ar { --g: var(--m-data); --gi: var(--m-data-ink); }
+.g-bit { --g: var(--m-meta); --gi: var(--m-meta-ink); }
+.g-cmp { --g: var(--m-ptr); --gi: var(--m-ptr-ink); }
+.g-log { --g: var(--m-head); --gi: var(--m-head-ink); }
+.g-oth { --g: var(--err-soft); --gi: var(--err); }
+.op-node { fill: var(--g); stroke: var(--gi); stroke-width: 1.5; }
+
+/* mutability tree */
+.tree { display: grid; justify-items: center; }
+.tree-root { font-family: var(--font-display); font-weight: 600; background: var(--ink); color: var(--bg); padding: 8px 18px; border-radius: var(--radius); }
+.tree-stem { width: 2px; height: 18px; background: var(--muted); }
+.tree-br { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; padding-top: 18px; }
+.tree-br::before { content: ""; position: absolute; top: 0; left: 25%; right: 25%; height: 18px; border: 2px solid var(--muted); border-bottom: 0; border-radius: 6px 6px 0 0; }
+.branch { min-width: 0; background: var(--surface); border: 1.5px solid var(--line); border-top: 4px solid var(--bc); border-radius: var(--radius); padding: 12px 14px; }
+.branch.mut { --bc: var(--m-data-ink); }
+.branch.imm { --bc: var(--accent); }
+.branch h3 { margin: 0; font-size: 16px; display: flex; gap: 8px; align-items: center; }
+.branch .dot { color: var(--bc); }
+.branch p { margin: 2px 0 10px; color: var(--muted); font-size: 13px; }
+.branch ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: 4px 12px; }
+.branch li { display: flex; gap: 8px; align-items: baseline; font-size: 13px; color: var(--muted); }
+.branch li code { color: var(--ink); font-weight: 700; font-size: 14px; }
+.branch li a { text-decoration: none; }
+.branch li a code { color: var(--accent); }
+
+/* yes/no marks in tables */
+table.t td.wrap { white-space: normal; min-width: 12rem; }
+td.mk .sym { font-weight: 700; font-family: var(--font-mono); }
+td.mk.y .sym { color: var(--ok); }
+td.mk.no .sym { color: var(--err); }
+td.mk.warn .sym { color: var(--m-data-ink); }
+td.mk.mid .sym { color: var(--muted); }
+.mk-n { color: var(--muted); font-size: 13px; }
+table.t th.hl, table.t td.hl { background: var(--accent-soft); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); margin-top: 10px; }
+.legend b { font-family: var(--font-mono); }
+
+/* typing quadrant */
+.quad { display: grid; grid-template-columns: minmax(64px, auto) 1fr 1fr; gap: 8px; max-width: 860px; }
+.q-ax { font-weight: 600; font-size: 14px; display: flex; flex-direction: column; justify-content: center; }
+.q-ax small { font-weight: 400; color: var(--muted); font-size: 12px; }
+.q-x { text-align: center; }
+.q-cell { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.q-cell.hot { border: 2px solid var(--accent); background: var(--accent-soft); }
+.q-t { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+.q-langs { display: flex; flex-wrap: wrap; gap: 4px; }
+.q-langs span { font-size: 13px; border: 1px solid var(--line); border-radius: 4px; padding: 0 6px; background: var(--bg); }
+.q-langs span.me { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+.q-ex { font-size: 13px; overflow-wrap: anywhere; }
+.q-ex .r { color: var(--muted); }
+.q-ex .r.no { color: var(--err); }
+.q-ex .r.warn { color: var(--m-data-ink); }
+
+/* typing timelines */
+.lanes { display: grid; gap: 14px; }
+.lane-h { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+.lane-h span { color: var(--muted); font-weight: 400; }
+.steps { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.st { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 10px; font-size: 13px; line-height: 1.3; }
+.st small { display: block; color: var(--muted); font-size: 12px; }
+.st.ok { border-color: var(--ok); }
+.st.bad { border-color: var(--err); background: var(--err-soft); color: var(--err); font-weight: 600; }
+.st.bad small { color: var(--err); font-weight: 400; }
+.st.off { opacity: 0.45; border-style: dashed; }
+.steps .arr { color: var(--muted); }
+
+/* precedence */
+.strip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 4px; font-size: 13px; }
+.strip .pc { font-family: var(--font-mono); background: var(--g); color: var(--gi); border-radius: 4px; padding: 2px 8px; font-weight: 600; white-space: nowrap; }
+.strip .gt { color: var(--muted); }
+.strip .end { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+.g-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 13px; }
+.g-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.g-legend i { width: 12px; height: 12px; border-radius: 3px; background: var(--g); border: 1px solid var(--gi); }
+table.prec td.num { font-family: var(--font-mono); font-weight: 700; text-align: center; background: var(--g); color: var(--gi); width: 2.5em; }
+table.prec td.grp { font-weight: 600; color: var(--gi); border-left: 4px solid var(--gi); vertical-align: top; }
+table.prec td.opsx { white-space: normal; min-width: 11rem; }
+table.prec td.opsx code { display: inline-block; margin: 1px 6px 1px 0; }
+.assoc { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+.as-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 4px; justify-items: start; }
+.as-card h3 { margin: 0 0 4px; font-size: 14px; }
+.as-card code { font-size: 15px; }
+.as-card .dn { color: var(--muted); font-size: 13px; }
+.as-card .grp1 { background: var(--m-data); color: var(--m-data-ink); border-radius: 3px; padding: 0 2px; }
+.paren { font-size: 14px; overflow-x: auto; white-space: nowrap; padding: 8px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); margin: 0 0 12px; }
+
+/* collections */
+table.bigo td.o { font-family: var(--font-mono); text-align: center; font-weight: 600; }
+table.bigo td.o1 { background: var(--m-ptr); color: var(--m-ptr-ink); }
+table.bigo td.on { background: var(--m-data); color: var(--m-data-ink); }
+table.bigo td.ox { color: var(--muted); }
+table.bigo td.o sup { font-weight: 400; }
+table.coll th.c, table.bigo th.c { text-align: center; font-family: var(--font-mono); text-transform: none; font-size: 14px; color: var(--ink); letter-spacing: 0; }
+table.coll td.mk, table.coll td.cc { text-align: center; }
+.flow { display: grid; grid-template-columns: minmax(0, 24rem) auto auto; gap: 0 10px; align-items: center; justify-content: start; }
+.fq { grid-column: 1; background: var(--surface); border: 1.5px solid var(--muted); border-radius: var(--radius); padding: 9px 14px; font-weight: 500; }
+.fy { color: var(--ok); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.fr { font-family: var(--font-mono); font-weight: 700; background: var(--accent); color: var(--bg); padding: 4px 12px; border-radius: var(--radius); text-decoration: none; justify-self: start; }
+.fr small { font-weight: 400; font-family: var(--font-body); opacity: 0.85; }
+.fn { grid-column: 1; justify-self: center; color: var(--muted); font-size: 13px; padding: 3px 0; }
+.fn::before { content: "↓ "; }
+.flow .fr.last { grid-column: 1; justify-self: center; }
+@media (max-width: 560px) {
+  .tree-br { grid-template-columns: 1fr; }
+  .tree-br::before { display: none; }
+  .quad { grid-template-columns: 1fr; }
+  .quad .q-ax.q-y1, .quad .q-ax.q-y2, .quad .q-blank, .quad .q-x { display: none; }
+  .flow { grid-template-columns: minmax(0, 1fr) auto auto; }
+}
+
+.imp { margin: 0 0 8px; max-width: 760px; }
+.imp-l { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin: 18px 0 6px; }
+.p-name.small { font-size: clamp(34px, 6vw, 56px); }
+.tab { font-family: var(--font-mono); }
+.tab.sep { margin-left: auto; font-family: var(--font-body); }
+.tab.concept { font-family: var(--font-body); }
+table.fmt td.c code { font-size: 15px; font-weight: 700; color: var(--accent); }
+table.fmt td.ex { font-family: var(--font-mono); white-space: pre; font-size: 13px; }
+table.fmt td.out { color: var(--ok); }
+table.fmt td.out.err { color: var(--err); }
+table.fmt td.wrap { white-space: normal; min-width: 14rem; }
+table.fmt td.p-yes { color: var(--ok); font-weight: 600; }
+table.fmt td.p-no { color: var(--muted); }
+table.fmt td.p-pair { color: var(--m-data-ink); font-weight: 600; }
+.fmt-group td { background: var(--accent-soft); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.notes { margin: 0; padding-left: 18px; max-width: 80ch; color: var(--muted); font-size: 14px; }
+.notes li { margin: 4px 0; }
+.refdate { font-size: 14px; margin: 0 0 12px; color: var(--muted); }
+.refdate b { color: var(--ink); }
+.cell .stdout::before { content: "виводить: "; }
+.cell pre { white-space: pre; }
+.cell pre, .cell .res { tab-size: 4; }
+
+/* UTC tab: world map with 15-degree zone strips, live city clocks */
+/* Code cells show their full content: wrap long lines instead of scrolling */
+.cell pre, .cell .res, .cell .stdout, table.fmt td.ex { white-space: pre-wrap; overflow-wrap: anywhere; overflow-x: visible; }
+.cell pre, .cell .res { font-size: 13.5px; }
+.m-row { grid-template-columns: minmax(0, 13rem) minmax(0, 1fr) minmax(0, 1.6fr); }
+.ops { grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); }
+table.fmt td.ex { min-width: 16rem; }
+/* Wide terminal output (rich tables): full row, no wrapping */
+.ops .cell.wide { grid-column: 1 / -1; }
+.cell.wide .stdout { white-space: pre; overflow-x: auto; }
+@media (max-width: 640px) {
+  table.fmt thead { display: none; }
+  table.fmt, table.fmt tbody, table.fmt tr, table.fmt td { display: block; width: 100%; }
+  table.fmt tr { border-bottom: 1px solid var(--line); padding: 6px 0; }
+  table.fmt td { border: 0; padding: 2px 4px; white-space: normal; min-width: 0; }
+  table.fmt td.ex { min-width: 0; }
+}
+/* module06: project files, note column, links */
+.cell .fname { padding: 6px 12px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--muted); border-bottom: 1px solid var(--line); background: var(--bg); }
+.ops.files { margin-bottom: 8px; }
+table.fmt td.note-c { color: var(--muted); font-size: 13.5px; min-width: 16rem; }
+table.fmt td.note-c code, table.fmt td.wrap code { color: var(--ink); }
+a { color: var(--accent); }
+.notes a, td.note-c a, .p-tag a, .step-d a { text-underline-offset: 2px; }
+.step-n { flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--bg); font-family: var(--font-mono); font-weight: 700; font-size: 14px; align-self: center; }
+.step-d { max-width: 80ch; margin: 0 0 14px; }
+.step-d p { margin: 0 0 8px; }
+.step-d code { background: var(--surface); border: 1px solid var(--line); padding: 0 4px; border-radius: 3px; font-size: 0.86em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow" id="ver"></div>
+      <h1>Шпаргалка: можливості вбудованих модулів</h1>
+      <p class="lede"><code>namedtuple</code>, <code>Counter</code>, <code>defaultdict</code>, <code>Decimal</code>, ітератори, генератори, <code>@contextmanager</code> і <code>sqlite3</code>: що вони роблять і коли їх брати.</p>
+    </div>
+  </header>
+</div>
+<nav class="tabs" aria-label="Розділи">
+  <div class="tablist" role="tablist" id="tablist"></div>
+</nav>
+<main class="wrap" id="panels"></main>
+<div class="wrap">
+  <footer><p>Кожен результат Python-прикладу на цій сторінці отримано справжнім запуском у CPython <span id="ver2"></span>. Файли з теки <code>module07/</code> показано на вкладках, де вони використовуються.</p></footer>
+</div>
+<script>
+const DATA = {"version": "3.14.3", "tabs": [{"key": "namedtuple", "label": "namedtuple", "kind": "api", "title": "Іменований кортеж", "tagline": "`namedtuple` створює **клас** — підклас `tuple`, у якого елементи мають імена. Це перший крок до ООП: об'єкт з полями без написання `class` і `__init__`. Результат лишається незмінним (immutable).", "chips": ["namedtuple('P', ['x','y'])", "p.x", "p._replace()", "p._asdict()", "P._fields", "P._make(iter)"], "imp": "", "files": [{"name": "_namedtuple.py", "code": "import collections\n\nPoint = collections.namedtuple(\"Point\", [\"x\", \"y\", \"z\"])\np = Point(1, 2, 3)\nprint(p.x, p.y, p.z)\n\nCat = collections.namedtuple(\"Cat\", [\"nickname\", \"age\", \"owner\"])\nprint(Cat.__name__)\ncat = Cat(\"Simon\", 4, \"Krabat\")\nprint(type(cat))\nprint(f\"This is a cat {cat.nickname}, {cat.age} age, his owner {cat.owner}\")"}], "methodsTitle": "Створення, доступ і службові методи", "props": [{"t": "Фабрика класів", "d": "`namedtuple(\"Cat\", [...])` повертає **новий клас**, а не екземпляр. Перший аргумент — ім'я класу (`Cat.__name__`), друге — імена полів списком або рядком `\"a b c\"`."}, {"t": "Це все ще tuple", "d": "Працюють індекси, зрізи, розпакування, `len`, порівняння. Поле доступне і як `p[0]`, і як `p.x`. Присвоїти `p.x = 5` не вийде — кортеж незмінний."}, {"t": "Компактність", "d": "Екземпляр займає стільки ж пам'яті, що й звичайний кортеж: `__dict__` немає. Значно легший за звичайний клас."}, {"t": "Коли брати", "d": "Прості записи без поведінки: координати, рядок із CSV, результат функції з кількома значеннями. Потрібні методи чи зміни — `dataclass` або `class`."}], "methods": [{"ex": "from collections import namedtuple\nCat = namedtuple('Cat', 'nickname age owner')\ncat = Cat('Simon', 4, 'Krabat')\ncat", "out": "Cat(nickname='Simon', age=4, owner='Krabat')", "err": false, "stdout": "", "note": "", "group": "Створення", "name": "namedtuple()", "sig": "namedtuple(typename, field_names)", "desc": "Створює клас. Імена полів — список або рядок через пробіл/кому."}, {"ex": "Cat(nickname='Tom', age=2, owner='Ann')", "out": "Cat(nickname='Tom', age=2, owner='Ann')", "err": false, "stdout": "", "note": "", "group": "Створення", "name": "Cat(...)", "sig": "Cat(*args) / Cat(**kwargs)", "desc": "Екземпляр створюють позиційно або за іменами полів."}, {"ex": "P = namedtuple('P', 'x y z', defaults=[0, 0])\nP(1)", "out": "P(x=1, y=0, z=0)", "err": false, "stdout": "", "note": "", "group": "Створення", "name": "defaults=", "sig": "namedtuple(..., defaults=[...])", "desc": "Значення за замовчуванням — застосовуються до **останніх** полів."}, {"ex": "p.x + p.y + p.z", "out": "6", "err": false, "stdout": "", "note": "", "group": "Доступ", "name": "p.x", "sig": "p.field", "desc": "Доступ за іменем — читабельніше за `p[0]`."}, {"ex": "p[0], p[-1], p[:2]", "out": "(1, 3, (1, 2))", "err": false, "stdout": "", "note": "", "group": "Доступ", "name": "p[i]", "sig": "p[0], p[-1], p[:2]", "desc": "Індекси й зрізи, як у звичайного кортежа."}, {"ex": "x, y, z = p\nx, y, z", "out": "(1, 2, 3)", "err": false, "stdout": "", "note": "", "group": "Доступ", "name": "розпакування", "sig": "x, y, z = p", "desc": "Розпакування працює, бо це `tuple`."}, {"ex": "Point._fields", "out": "('x', 'y', 'z')", "err": false, "stdout": "", "note": "", "group": "Службові", "name": "_fields", "sig": "P._fields", "desc": "Кортеж імен полів класу."}, {"ex": "p._asdict()", "out": "{'x': 1, 'y': 2, 'z': 3}", "err": false, "stdout": "", "note": "", "group": "Службові", "name": "_asdict()", "sig": "p._asdict()", "desc": "Перетворює на словник (`dict`) — зручно для JSON."}, {"ex": "p2 = p._replace(x=100)\n(p, p2)", "out": "(Point(x=1, y=2, z=3), Point(x=100, y=2, z=3))", "err": false, "stdout": "", "note": "", "group": "Службові", "name": "_replace()", "sig": "p._replace(**changes)", "desc": "Повертає **нову** копію зі зміненими полями. Оригінал не змінюється."}, {"ex": "Point._make([7, 8, 9])", "out": "Point(x=7, y=8, z=9)", "err": false, "stdout": "", "note": "", "group": "Службові", "name": "_make()", "sig": "P._make(iterable)", "desc": "Створює екземпляр з будь-якого ітерованого об'єкта (наприклад, рядка CSV)."}], "ops": [{"ex": "p.x = 10", "out": "AttributeError: can't set attribute", "err": true, "stdout": "", "note": "Поля незмінні: зміна дає `AttributeError`. Використовуйте `_replace`."}, {"ex": "p == (1, 2, 3), isinstance(p, tuple)", "out": "(True, True)", "err": false, "stdout": "", "note": "Порівнюється як звичайний кортеж."}, {"ex": "Cat = namedtuple('Cat', ['nickname', 'age', 'owner'])\ncat = Cat('Simon', 4, 'Krabat')\nprint(type(cat), Cat.__name__)\nprint(f\"Cat {cat.nickname}, {cat.age} y.o., owner {cat.owner}\")", "out": "", "err": false, "stdout": "<class '__main__.Cat'> Cat\nCat Simon, 4 y.o., owner Krabat", "note": "Приклад із `_namedtuple.py`."}, {"ex": "rows = [('Ann', 30), ('Bob', 25)]\nUser = namedtuple('User', 'name age')\n[User(*r) for r in rows]", "out": "[User(name='Ann', age=30), User(name='Bob', age=25)]", "err": false, "stdout": "", "note": "Розпакування рядків у записи."}, {"ex": "sorted([User('Ann', 30), User('Bob', 25)], key=lambda u: u.age)", "out": "[User(name='Bob', age=25), User(name='Ann', age=30)]", "err": false, "stdout": "", "note": "Іменоване поле у `key=` читається краще, ніж `u[1]`."}]}, {"key": "counter", "label": "Counter", "kind": "api", "title": "Лічильник", "tagline": "`Counter` — підклас `dict`, який рахує **хешовані** елементи: ключ — елемент, значення — кількість. Відсутній ключ дає `0`, а не `KeyError`.", "chips": ["Counter(iterable)", "most_common(n)", "elements()", "update()", "subtract()", "c1 == c2"], "imp": "", "files": [{"name": "_counter.py", "code": "from collections import Counter\n\ntext = \"missiSipi\".lower()\ncount = Counter(text)\n\nprint(count)"}, {"name": "_temperature.py", "code": "import collections\n\ntemperatures = [0.5, 0.0, -3.5, 0.0, 2.5, 3.5, 4.0, 0.5, 3.5, 5.5, 6.0, 10.0, 12.5]\n\nt_count = collections.Counter(temperatures)\nprint(t_count)\nprint(t_count.most_common())"}, {"name": "anagram.py", "code": "from collections import Counter\n\n\ndef is_anagram(word1, word2):\n    return Counter(word1) == Counter(word2)\n\n\nres = is_anagram(\"asds\", \"sads\")\nprint(res)"}], "methodsTitle": "Створення та методи", "props": [{"t": "Підклас dict", "d": "Усе, що вміє `dict`, працює: `c[key]`, `.items()`, `.keys()`, `len`. Різниця: **відсутній ключ повертає 0** і не створюється."}, {"t": "Що можна рахувати", "d": "Будь-який ітерований об'єкт хешовних елементів: символи рядка, слова, числа, кортежі. Список (`list`) як елемент — не можна."}, {"t": "Порядок", "d": "Зберігається порядок першої появи. `most_common()` повертає від найчастішого до найрідшого."}, {"t": "Типові задачі", "d": "Частота символів і слів, найчастіший елемент, перевірка анаграм, порівняння мультимножин."}], "methods": [{"ex": "Counter('missiSipi'.lower())", "out": "Counter({'i': 4, 's': 3, 'm': 1, 'p': 1})", "err": false, "stdout": "", "note": "", "group": "Створення", "name": "Counter(iterable)", "sig": "Counter(iterable)", "desc": "Рахує елементи ітерованого об'єкта."}, {"ex": "Counter({'a': 3, 'b': 1})", "out": "Counter({'a': 3, 'b': 1})", "err": false, "stdout": "", "note": "", "group": "Створення", "name": "Counter(mapping)", "sig": "Counter({'a': 3})", "desc": "З готового словника кількостей."}, {"ex": "Counter(a=3, b=1)", "out": "Counter({'a': 3, 'b': 1})", "err": false, "stdout": "", "note": "", "group": "Створення", "name": "Counter(**kw)", "sig": "Counter(a=3, b=1)", "desc": "З іменованих аргументів."}, {"ex": "c = Counter('hello')\nc['l'], c['z']", "out": "(2, 0)", "err": false, "stdout": "", "note": "", "group": "Доступ", "name": "c[key]", "sig": "c[key]", "desc": "Кількість елемента. Якщо елемента немає — `0`, без помилки."}, {"ex": "Counter('abracadabra').most_common(2)", "out": "[('a', 5), ('b', 2)]", "err": false, "stdout": "", "note": "", "group": "Доступ", "name": "most_common()", "sig": "c.most_common(n=None)", "desc": "Список пар `(елемент, кількість)` за спаданням. `n` обмежує довжину."}, {"ex": "sorted(Counter(a=2, b=1).elements())", "out": "['a', 'a', 'b']", "err": false, "stdout": "", "note": "", "group": "Доступ", "name": "elements()", "sig": "c.elements()", "desc": "Ітератор: кожен елемент повторюється стільки разів, скільки він порахований."}, {"ex": "Counter('hello').total()", "out": "5", "err": false, "stdout": "", "note": "", "group": "Доступ", "name": "total()", "sig": "c.total()", "desc": "Сума всіх кількостей (Python 3.10+)."}, {"ex": "c = Counter('aab')\nc.update('abc')\nc", "out": "Counter({'a': 3, 'b': 2, 'c': 1})", "err": false, "stdout": "", "note": "", "group": "Зміна", "name": "update()", "sig": "c.update(iterable)", "desc": "**Додає** кількості (на відміну від `dict.update`, що замінює)."}, {"ex": "c = Counter('aabb')\nc.subtract('abc')\nc", "out": "Counter({'a': 1, 'b': 1, 'c': -1})", "err": false, "stdout": "", "note": "", "group": "Зміна", "name": "subtract()", "sig": "c.subtract(iterable)", "desc": "Віднімає кількості. Результат може бути від'ємним або `0`."}, {"ex": "a, b = Counter('aabc'), Counter('abbd')\n(a + b, a - b, a & b, a | b)", "out": "(Counter({'a': 3, 'b': 3, 'c': 1, 'd': 1}), Counter({'a': 1, 'c': 1}), Counter({'a': 1, 'b': 1}), Counter({'a': 2, 'b': 2, 'c': 1, 'd': 1}))", "err": false, "stdout": "", "note": "", "group": "Арифметика", "name": "c1 + c2", "sig": "+  -  &  |", "desc": "`+` додає, `-` віднімає (лише додатні), `&` мінімум, `|` максимум."}, {"ex": "Counter('asds') == Counter('sads')", "out": "True", "err": false, "stdout": "", "note": "", "group": "Арифметика", "name": "c1 == c2", "sig": "==", "desc": "Порівняння кількостей: порядок елементів не важливий."}], "ops": [{"ex": "temperatures = [0.5, 0.0, -3.5, 0.0, 2.5, 3.5, 4.0, 0.5, 3.5, 5.5, 6.0, 10.0, 12.5]\nt_count = Counter(temperatures)\nprint(t_count)\nprint(t_count.most_common(3))", "out": "", "err": false, "stdout": "Counter({0.5: 2, 0.0: 2, 3.5: 2, -3.5: 1, 2.5: 1, 4.0: 1, 5.5: 1, 6.0: 1, 10.0: 1, 12.5: 1})\n[(0.5, 2), (0.0, 2), (3.5, 2)]", "note": "Приклад із `_temperature.py`: найчастіші температури."}, {"ex": "def is_anagram(w1, w2):\n    return Counter(w1) == Counter(w2)\n\nis_anagram('asds', 'sads'), is_anagram('abc', 'abd')", "out": "(True, False)", "err": false, "stdout": "", "note": "Анаграми: однаковий склад літер (`anagram.py`)."}, {"ex": "words = 'to be or not to be'.split()\nCounter(words).most_common(1)[0]", "out": "('to', 2)", "err": false, "stdout": "", "note": "Найчастіше слово."}, {"ex": "Tv = {'BreakingBad': 100, 'GameOfThrones': 1292, 'TMKUC': 88}\nmax(Tv, key=lambda x: Tv[x])", "out": "'GameOfThrones'", "err": false, "stdout": "", "note": "Ключ із максимальним значенням у звичайному `dict` — без `Counter`."}, {"ex": "Counter([[1], [2]])", "out": "TypeError: unhashable type: 'list'", "err": true, "stdout": "", "note": "Елементи мають бути хешованими: список не можна."}]}, {"key": "defaultdict", "label": "defaultdict", "kind": "api", "title": "Словник зі значенням за замовчуванням", "tagline": "`defaultdict(factory)` — це `dict`, який при зверненні до **відсутнього ключа** сам створює значення викликом `factory()` і зберігає його. Не потрібні `if key in d` чи `setdefault`.", "chips": ["defaultdict(list)", "defaultdict(int)", "defaultdict(set)", "d.default_factory", "d[key].append(x)"], "imp": "", "files": [{"name": "_defdict.py", "code": "from collections import defaultdict\n\nphone_numbers = [\"0509993636\", \"0679993636\", \"0959993636\", \"0969993636\",\n                 \"0509993637\", \"0639993636\", \"0509993632\", \"0339993632\"]\n\nphone_operator_numbers = defaultdict(list)\n\nfor ph in phone_numbers:\n    if ph.startswith(\"050\") or ph.startswith(\"095\"):\n        phone_operator_numbers[\"Vodafone\"].append(ph)\n    elif ph.startswith(\"067\") or ph.startswith(\"096\"):\n        phone_operator_numbers[\"Kyivstar\"].append(ph)\n    elif ph.startswith(\"063\") or ph.startswith(\"093\"):\n        phone_operator_numbers[\"Lifeceil\"].append(ph)\n    else:\n        phone_operator_numbers[\"Unknown\"].append(ph)\n\nprint(phone_operator_numbers)"}], "methodsTitle": "Фабрики та поведінка", "props": [{"t": "default_factory", "d": "Виклик без аргументів: `list` → `[]`, `int` → `0`, `set` → `set()`, `dict` → `{}`, `lambda: 'n/a'` → довільне значення. Без фабрики (`None`) це звичайний `dict` з `KeyError`."}, {"t": "Створює при читанні", "d": "Навіть `d['x']` без присвоєння **додає** ключ `'x'`. Щоб перевірити наявність без побічного ефекту — `'x' in d` або `d.get('x')`."}, {"t": "Підклас dict", "d": "Усі методи `dict` працюють. Єдина різниця — метод `__missing__`, який викликає фабрику."}, {"t": "Типові задачі", "d": "Групування (ключ → список), підрахунок (ключ → число), множини за ключем, вкладені словники."}], "methods": [{"ex": "d = defaultdict(list)\nd['a'].append(1)\nd['a'].append(2)\nd['b'].append(3)\ndict(d)", "out": "{'a': [1, 2], 'b': [3]}", "err": false, "stdout": "", "note": "", "group": "Фабрики", "name": "list", "sig": "defaultdict(list)", "desc": "Групування: до відсутнього ключа одразу можна `.append`."}, {"ex": "d = defaultdict(int)\nfor ch in 'banana':\n    d[ch] += 1\ndict(d)", "out": "{'b': 1, 'a': 3, 'n': 2}", "err": false, "stdout": "", "note": "", "group": "Фабрики", "name": "int", "sig": "defaultdict(int)", "desc": "Лічильник: нове значення — `0`."}, {"ex": "d = defaultdict(set)\nd['x'].add(1); d['x'].add(1); d['x'].add(2)\ndict(d)", "out": "{'x': {1, 2}}", "err": false, "stdout": "", "note": "", "group": "Фабрики", "name": "set", "sig": "defaultdict(set)", "desc": "Унікальні значення за ключем."}, {"ex": "d = defaultdict(lambda: 'n/a')\nd['missing']", "out": "'n/a'", "err": false, "stdout": "", "note": "", "group": "Фабрики", "name": "lambda", "sig": "defaultdict(lambda: v)", "desc": "Будь-яке значення за замовчуванням."}, {"ex": "d = defaultdict(dict)\nd['ann']['age'] = 30\ndict(d)", "out": "{'ann': {'age': 30}}", "err": false, "stdout": "", "note": "", "group": "Фабрики", "name": "defaultdict(dict)", "sig": "defaultdict(dict)", "desc": "Дворівневий словник без ініціалізації внутрішніх."}, {"ex": "defaultdict(list).default_factory", "out": "<class 'list'>", "err": false, "stdout": "", "note": "", "group": "Поведінка", "name": "default_factory", "sig": "d.default_factory", "desc": "Атрибут із фабрикою; можна змінити або поставити `None`."}, {"ex": "d = defaultdict(int)\nd['x']\nd", "out": "defaultdict(<class 'int'>, {'x': 0})", "err": false, "stdout": "", "note": "", "group": "Поведінка", "name": "побічний ефект", "sig": "d[key]", "desc": "Читання відсутнього ключа **створює** його."}, {"ex": "d = defaultdict(int)\n('x' in d, d.get('x'), len(d))", "out": "(False, None, 0)", "err": false, "stdout": "", "note": "", "group": "Поведінка", "name": "in / get", "sig": "key in d, d.get(key)", "desc": "Не створюють ключ і не викликають фабрику."}, {"ex": "defaultdict()['x']", "out": "KeyError: 'x'", "err": true, "stdout": "", "note": "", "group": "Поведінка", "name": "без фабрики", "sig": "defaultdict()", "desc": "Без фабрики відсутній ключ дає `KeyError`, як у `dict`."}], "ops": [{"ex": "phones = ['0509993636', '0679993636', '0959993636', '0639993636', '0339993632']\nops = defaultdict(list)\nfor ph in phones:\n    if ph.startswith(('050', '095')): ops['Vodafone'].append(ph)\n    elif ph.startswith(('067', '096')): ops['Kyivstar'].append(ph)\n    elif ph.startswith(('063', '093')): ops['Lifeceil'].append(ph)\n    else: ops['Unknown'].append(ph)\ndict(ops)", "out": "{'Vodafone': ['0509993636', '0959993636'], 'Kyivstar': ['0679993636'], 'Lifeceil': ['0639993636'], 'Unknown': ['0339993632']}", "err": false, "stdout": "", "note": "Приклад із `_defdict.py`: групування номерів за оператором."}, {"ex": "words = ['apple', 'avocado', 'banana', 'blueberry', 'cherry']\nby_letter = defaultdict(list)\nfor w in words:\n    by_letter[w[0]].append(w)\ndict(by_letter)", "out": "{'a': ['apple', 'avocado'], 'b': ['banana', 'blueberry'], 'c': ['cherry']}", "err": false, "stdout": "", "note": "Групування слів за першою літерою."}, {"ex": "d = {}\nfor ch in 'aab':\n    d.setdefault(ch, []).append(ch)\nd", "out": "{'a': ['a', 'a'], 'b': ['b']}", "err": false, "stdout": "", "note": "Те саме у звичайному `dict` — через `setdefault`: працює, але довше."}]}, {"key": "decimal", "label": "Decimal", "kind": "api", "title": "Точна десяткова арифметика", "tagline": "`float` зберігає числа у двійковому вигляді, тому `0.1 + 0.2 != 0.3`. `Decimal` рахує у десятковій системі й дозволяє **контролювати точність і округлення** — це потрібно для грошей і бухгалтерії.", "chips": ["Decimal('0.1')", "getcontext().prec", "quantize()", "ROUND_HALF_UP", "compare()", "Decimal(str(f))"], "imp": "", "files": [{"name": "01_dc.py", "code": "from decimal import Decimal, getcontext\n\nf = 0.2 + 0.1 + 0.3 - 0.5\nprint(f)\n\nrf = Decimal(\"0.2\") + Decimal(\"0.1\") + Decimal(\"0.3\") - Decimal(\"0.5\")\nprint(rf)\n\ngetcontext().prec = 6\nprint(Decimal(\"1\") / Decimal(\"3\"))"}, {"name": "02_dc.py", "code": "from decimal import Decimal, ROUND_HALF_EVEN, ROUND_HALF_UP\n\nnum = Decimal(\"1.45\")\nprint(num.quantize(Decimal(\"1.0\"), rounding=ROUND_HALF_EVEN))\nprint(num.quantize(Decimal(\"1.0\"), rounding=ROUND_HALF_UP))\nprint(Decimal(\"3.14159\").quantize(Decimal(\"1.000\")))"}, {"name": "04_dc.py", "code": "# 0 -> equal, -1 -> first is less, 1 -> first is bigger\nfrom decimal import Decimal\n\nprint(Decimal(\"1.2\").compare(Decimal(\"1.1\")))\nprint(Decimal(\"1.0\").compare(Decimal(\"1.1\")))"}], "methodsTitle": "Створення, контекст і округлення", "props": [{"t": "Створюйте з рядка", "d": "`Decimal('0.1')` — точно. `Decimal(0.1)` — бере вже неточний `float` і зберігає всі його «зайві» цифри. Для `float` використовуйте `Decimal(str(x))`."}, {"t": "Точність = контекст", "d": "`getcontext().prec` — кількість **значущих цифр** (за замовчуванням 28). Діє на результати операцій, а не на самі створені числа."}, {"t": "quantize для округлення", "d": "`x.quantize(Decimal('0.01'), rounding=...)` округлює до заданого кроку. Режим за замовчуванням — `ROUND_HALF_EVEN` (банківське округлення), а не шкільне."}, {"t": "Змішувати з float не можна", "d": "`Decimal + float` — `TypeError`. `Decimal + int` — можна."}], "methods": [{"ex": "Decimal('0.1') + Decimal('0.2') == Decimal('0.3')", "out": "True", "err": false, "stdout": "", "note": "", "group": "Створення", "name": "Decimal('str')", "sig": "Decimal('0.1')", "desc": "Рекомендований спосіб: точне десяткове значення."}, {"ex": "Decimal(0.1)", "out": "Decimal('0.1000000000000000055511151231257827021181583404541015625')", "err": false, "stdout": "", "note": "", "group": "Створення", "name": "Decimal(float)", "sig": "Decimal(0.1)", "desc": "Пастка: переносить двійкову неточність `float`."}, {"ex": "Decimal.from_float(1.37)", "out": "Decimal('1.37000000000000010658141036401502788066864013671875')", "err": false, "stdout": "", "note": "", "group": "Створення", "name": "from_float()", "sig": "Decimal.from_float(f)", "desc": "Те саме, що `Decimal(float)`: точне значення двійкового `float`."}, {"ex": "Decimal(str(1.37))", "out": "Decimal('1.37')", "err": false, "stdout": "", "note": "", "group": "Створення", "name": "Decimal(str(f))", "sig": "Decimal(str(f))", "desc": "Правильний шлях з `float`: через рядок."}, {"ex": "getcontext().prec = 6\nr = Decimal('11') / Decimal('3')\ngetcontext().prec = 28\nr", "out": "Decimal('3.66667')", "err": false, "stdout": "", "note": "", "group": "Контекст", "name": "getcontext().prec", "sig": "getcontext().prec = n", "desc": "Кількість значущих цифр результату."}, {"ex": "Decimal('1') / Decimal('3')", "out": "Decimal('0.3333333333333333333333333333')", "err": false, "stdout": "", "note": "", "group": "Контекст", "name": "prec за замовч.", "sig": "Decimal(1) / Decimal(3)", "desc": "За замовчуванням 28 значущих цифр."}, {"ex": "Decimal('3.14159').quantize(Decimal('1.000'))", "out": "Decimal('3.142')", "err": false, "stdout": "", "note": "", "group": "Округлення", "name": "quantize()", "sig": "x.quantize(exp, rounding=)", "desc": "Округляє до порядку, заданого `exp`: `1.0`, `0.01`, `1.000` тощо."}, {"ex": "(Decimal('1.45').quantize(Decimal('1.0'), rounding=ROUND_HALF_EVEN), Decimal('1.55').quantize(Decimal('1.0'), rounding=ROUND_HALF_EVEN))", "out": "(Decimal('1.4'), Decimal('1.6'))", "err": false, "stdout": "", "note": "", "group": "Округлення", "name": "ROUND_HALF_EVEN", "sig": "rounding=ROUND_HALF_EVEN", "desc": "Банківське (за замовч.): `.5` — до найближчого **парного**."}, {"ex": "Decimal('1.45').quantize(Decimal('1.0'), rounding=ROUND_HALF_UP)", "out": "Decimal('1.5')", "err": false, "stdout": "", "note": "", "group": "Округлення", "name": "ROUND_HALF_UP", "sig": "rounding=ROUND_HALF_UP", "desc": "Шкільне: `.5` — завжди вгору."}, {"ex": "(Decimal('1.2').compare(Decimal('1.1')), Decimal('1.0').compare(Decimal('1.1')), Decimal('1.0').compare(Decimal('1.0')))", "out": "(Decimal('1'), Decimal('-1'), Decimal('0'))", "err": false, "stdout": "", "note": "", "group": "Порівняння", "name": "compare()", "sig": "a.compare(b)", "desc": "`-1` — менше, `0` — рівні, `1` — більше."}, {"ex": "Decimal('1.0') == Decimal('1.00')", "out": "True", "err": false, "stdout": "", "note": "", "group": "Порівняння", "name": "==, <, >", "sig": "a == b", "desc": "Звичайні оператори теж працюють: `Decimal('1.0') == Decimal('1.00')`."}], "ops": [{"ex": "f = 0.2 + 0.1 + 0.3 - 0.5\nrf = Decimal('0.2') + Decimal('0.1') + Decimal('0.3') - Decimal('0.5')\nprint(f)\nprint(rf)", "out": "", "err": false, "stdout": "0.10000000000000009\n0.1", "note": "`float` дає хвіст помилки, `Decimal` — точний `0.0`."}, {"ex": "0.1 + 0.2 == 0.3", "out": "False", "err": false, "stdout": "", "note": "Класична пастка `float`."}, {"ex": "Decimal(0.1) + Decimal(0.2) == Decimal(0.3)", "out": "False", "err": false, "stdout": "", "note": "`Decimal` від `float` — теж неточно!"}, {"ex": "Decimal('0.1') + 0.2", "out": "TypeError: unsupported operand type(s) for +: 'decimal.Decimal' and 'float'", "err": true, "stdout": "", "note": "Змішувати `Decimal` і `float` не можна."}, {"ex": "price = Decimal('19.99')\ntotal = price * 3\ntotal, total.quantize(Decimal('0.1'))", "out": "(Decimal('59.97'), Decimal('60.0'))", "err": false, "stdout": "", "note": "Гроші: рахуємо точно, округлюємо один раз наприкінці."}, {"ex": "Decimal('1') / Decimal('3')", "out": "Decimal('0.3333333333333333333333333333')", "err": false, "stdout": "", "note": "28 значущих цифр за замовчуванням."}]}, {"key": "iterator", "label": "Iterable / Iterator", "kind": "api", "sep": true, "title": "Ітеровані об'єкти та ітератори", "tagline": "**Iterable** — те, по чому можна пройти циклом `for` (має `__iter__`). **Iterator** — об'єкт, що видає значення по одному (`__next__`) і пам'ятає позицію. `for` викликає `iter()` один раз, а потім `next()` до `StopIteration`.", "chips": ["iter(x)", "next(it)", "__iter__", "__next__", "StopIteration", "next(it, default)"], "imp": "", "files": [], "methodsTitle": "iter, next і свій ітератор", "props": [{"t": "Iterable ≠ Iterator", "d": "`list`, `str`, `dict`, `range` — iterable: їх можна обходити багато разів. Iterator одноразовий: після вичерпання повертає лише `StopIteration`."}, {"t": "Протокол", "d": "Iterable має `__iter__()`, що повертає ітератор. Iterator має `__next__()` (наступне значення) і `__iter__()`, що повертає `self`."}, {"t": "Як працює for", "d": "`it = iter(obj)` → повторювати `next(it)` → на `StopIteration` цикл тихо завершується."}, {"t": "Лінивість", "d": "Ітератор не зберігає всі значення в пам'яті — обчислює наступне на вимогу. Тому `range(10**12)` не з'їдає пам'ять."}], "methods": [{"ex": "it = iter([10, 20, 30])\ntype(it).__name__", "out": "'list_iterator'", "err": false, "stdout": "", "note": "", "group": "Вбудовані", "name": "iter()", "sig": "iter(iterable)", "desc": "Повертає ітератор для iterable."}, {"ex": "it = iter([10, 20, 30])\n(next(it), next(it), next(it))", "out": "(10, 20, 30)", "err": false, "stdout": "", "note": "", "group": "Вбудовані", "name": "next()", "sig": "next(iterator)", "desc": "Видає наступне значення."}, {"ex": "it = iter([1])\nnext(it)\nnext(it)", "out": "StopIteration: ", "err": true, "stdout": "", "note": "", "group": "Вбудовані", "name": "StopIteration", "sig": "next(exhausted)", "desc": "Коли значення закінчились — виняток."}, {"ex": "it = iter([])\nnext(it, 'порожньо')", "out": "'порожньо'", "err": false, "stdout": "", "note": "", "group": "Вбудовані", "name": "next(it, default)", "sig": "next(it, default)", "desc": "Значення за замовчуванням замість винятку."}, {"ex": "it = iter([1, 2, 3])\n(list(it), list(it))", "out": "([1, 2, 3], [])", "err": false, "stdout": "", "note": "", "group": "Вбудовані", "name": "одноразовість", "sig": "list(it)", "desc": "Ітератор вичерпується: другий обхід порожній."}, {"ex": "from collections.abc import Iterable, Iterator\n(isinstance([1], Iterable), isinstance([1], Iterator), isinstance(iter([1]), Iterator))", "out": "(True, False, True)", "err": false, "stdout": "", "note": "", "group": "Перевірка", "name": "Iterable / Iterator", "sig": "isinstance(x, Iterable)", "desc": "Класи з `collections.abc`."}, {"ex": "it = iter([1, 2])\nl = [1, 2]\n(iter(it) is it, iter(l) is l)", "out": "(True, False)", "err": false, "stdout": "", "note": "", "group": "Перевірка", "name": "iter(it) is it", "sig": "iter(it) is it", "desc": "Ітератор повертає сам себе, а `list` — новий ітератор щоразу."}, {"ex": "class Countdown:\n    def __init__(self, start):\n        self.current = start\n    def __iter__(self):\n        return self\n    def __next__(self):\n        if self.current <= 0:\n            raise StopIteration\n        self.current -= 1\n        return self.current + 1\n\nlist(Countdown(3))", "out": "[3, 2, 1]", "err": false, "stdout": "", "note": "", "group": "Свій", "name": "клас-ітератор", "sig": "__iter__ + __next__", "desc": "Власний ітератор: стан у атрибутах, `StopIteration` у кінці."}, {"ex": "class Repeat:\n    def __init__(self, n): self.n = n\n    def __iter__(self): return iter(range(self.n))\n\nr = Repeat(3)\n(list(r), list(r))", "out": "([0, 1, 2], [0, 1, 2])", "err": false, "stdout": "", "note": "", "group": "Свій", "name": "iterable-клас", "sig": "__iter__ повертає новий ітератор", "desc": "Якщо `__iter__` повертає **новий** ітератор — об'єкт можна обходити багато разів."}], "ops": [{"ex": "# що робить for «під капотом»\nit = iter([1, 2, 3])\nwhile True:\n    try:\n        x = next(it)\n    except StopIteration:\n        break\n    print(x)", "out": "", "err": false, "stdout": "1\n2\n3", "note": "Еквівалент `for x in [1, 2, 3]: print(x)`."}, {"ex": "d = {'a': 1, 'b': 2}\nit = iter(d)\n(next(it), next(it))", "out": "('a', 'b')", "err": false, "stdout": "", "note": "Ітерація по `dict` дає ключі."}, {"ex": "it = iter(range(3))\nfor x in it: pass\nfor x in it: print('не буде виконано')\n'другий цикл порожній'", "out": "'другий цикл порожній'", "err": false, "stdout": "", "note": "Вичерпаний ітератор у другому циклі нічого не видає."}, {"ex": "sum(x * x for x in range(5)), list(map(str, [1, 2])), list(zip('ab', [1, 2]))", "out": "(30, ['1', '2'], [('a', 1), ('b', 2)])", "err": false, "stdout": "", "note": "`map`, `zip`, `enumerate`, `filter`, `reversed` — теж ітератори."}, {"ex": "1 in iter([1, 2, 3]), list(enumerate('ab', start=1))", "out": "(True, [(1, 'a'), (2, 'b')])", "err": false, "stdout": "", "note": "`in` та `enumerate` працюють з ітераторами."}]}, {"key": "generators", "label": "Generators", "kind": "api", "title": "Генератори", "tagline": "Генератор — функція з `yield`. Замість `return` вона **призупиняється** і віддає значення, а наступний `next()` відновлює її з того ж місця. Python сам реалізує `__iter__`/`__next__` і зберігає локальні змінні.", "chips": ["yield", "yield from", "(x for x in …)", "next(gen)", "gen.send(v)", "gen.close()"], "imp": "", "files": [{"name": "gen/password.py", "code": "import string\nimport random\n\n\ndef generate_strong_password(length=16):\n    alphabet = string.ascii_letters + string.digits + string.punctuation\n    while True:\n        password = \"\".join(random.choice(alphabet) for _ in range(length))\n        has_lower = any(c.islower() for c in password)\n        has_upper = any(c.isupper() for c in password)\n        has_digit = any(c.isdigit() for c in password)\n        has_spec = any(c in string.punctuation for c in password)\n        if has_lower and has_upper and has_digit and has_spec:\n            yield password\n\n\nfor i, password in enumerate(generate_strong_password()):\n    print(password)\n    if i == 10:\n        break"}], "methodsTitle": "Форми та методи генераторів", "props": [{"t": "Функція-генератор", "d": "Будь-яка `def` із `yield` повертає **об'єкт-генератор** при виклику; тіло не виконується, доки не запросите перше значення."}, {"t": "Лінивість і пам'ять", "d": "Значення створюються по одному. Генератор може бути нескінченним (`while True: yield`) — зупиняйте його самі: `break`, `islice`, `next`."}, {"t": "Одноразовий", "d": "Вичерпаний генератор не перезапустити — викличте функцію знову, щоб отримати новий."}, {"t": "Генераторний вираз", "d": "`(x**2 for x in range(10))` — компактний генератор у круглих дужках. У квадратних `[...]` — це вже список, що будується одразу."}], "methods": [{"ex": "def countdown(start):\n    while start > 0:\n        yield start\n        start -= 1\n\nlist(countdown(3))", "out": "[3, 2, 1]", "err": false, "stdout": "", "note": "", "group": "Створення", "name": "yield", "sig": "def f(): yield v", "desc": "Функція-генератор: віддає значення й призупиняється."}, {"ex": "def g():\n    print('старт')\n    yield 1\n\ngen = g()\nprint('створено')\nnext(gen)", "out": "1", "err": false, "stdout": "створено\nстарт", "note": "", "group": "Створення", "name": "виклик ≠ виконання", "sig": "gen = f()", "desc": "Виклик лише створює генератор. Код починає працювати на першому `next()`."}, {"ex": "squares = (x**2 for x in range(5))\n(type(squares).__name__, list(squares))", "out": "('generator', [0, 1, 4, 9, 16])", "err": false, "stdout": "", "note": "", "group": "Створення", "name": "генераторний вираз", "sig": "(expr for x in it)", "desc": "Короткий запис без `def`."}, {"ex": "def chain(*its):\n    for it in its:\n        yield from it\n\nlist(chain('ab', [1, 2]))", "out": "['a', 'b', 1, 2]", "err": false, "stdout": "", "note": "", "group": "Створення", "name": "yield from", "sig": "yield from iterable", "desc": "Делегує віддачу іншому iterable/генератору."}, {"ex": "def g():\n    yield 'a'\n    yield 'b'\n\ngen = g()\n(next(gen), next(gen))", "out": "('a', 'b')", "err": false, "stdout": "", "note": "", "group": "Керування", "name": "next()", "sig": "next(gen)", "desc": "Відновлює виконання до наступного `yield`."}, {"ex": "def g():\n    yield 1\n    return 'готово'\n\ngen = g()\nnext(gen)\ntry:\n    next(gen)\nexcept StopIteration as e:\n    print(e.value)", "out": "", "err": false, "stdout": "готово", "note": "", "group": "Керування", "name": "return у генераторі", "sig": "return value", "desc": "Завершує генератор: `StopIteration` (значення — у `e.value`)."}, {"ex": "def acc():\n    total = 0\n    while True:\n        x = yield total\n        total += x\n\na = acc()\nnext(a)\n(a.send(10), a.send(5))", "out": "(10, 15)", "err": false, "stdout": "", "note": "", "group": "Керування", "name": "send()", "sig": "gen.send(value)", "desc": "Передає значення всередину: воно стає результатом виразу `yield`."}, {"ex": "def g():\n    try:\n        yield 1\n    except ValueError:\n        yield 'спіймано'\n\ngen = g()\nnext(gen)\ngen.throw(ValueError)", "out": "'спіймано'", "err": false, "stdout": "", "note": "", "group": "Керування", "name": "throw()", "sig": "gen.throw(exc)", "desc": "Кидає виняток у точці `yield`."}, {"ex": "def g():\n    yield 1\n    yield 2\n\ngen = g()\nnext(gen)\ngen.close()\nlist(gen)", "out": "[]", "err": false, "stdout": "", "note": "", "group": "Керування", "name": "close()", "sig": "gen.close()", "desc": "Зупиняє генератор (у ньому виникає `GeneratorExit`)."}, {"ex": "from itertools import islice\ndef naturals():\n    n = 1\n    while True:\n        yield n\n        n += 1\n\nlist(islice(naturals(), 5))", "out": "[1, 2, 3, 4, 5]", "err": false, "stdout": "", "note": "", "group": "Утиліти", "name": "islice()", "sig": "itertools.islice(gen, n)", "desc": "Перші `n` значень нескінченного генератора."}], "ops": [{"ex": "import string, random\nrandom.seed(7)\n\ndef strong_password(length=16):\n    alphabet = string.ascii_letters + string.digits + string.punctuation\n    while True:\n        pw = ''.join(random.choice(alphabet) for _ in range(length))\n        if (any(c.islower() for c in pw) and any(c.isupper() for c in pw)\n                and any(c.isdigit() for c in pw) and any(c in string.punctuation for c in pw)):\n            yield pw\n\ngen = strong_password(12)\n[next(gen) for _ in range(3)]", "out": "['Bel31iEl)2h+', '*rL1s(p,N*^x', 'Fx`Fk,M&\"R~5']", "err": false, "stdout": "", "note": "Нескінченний генератор паролів із `gen/password.py` (з `seed` для відтворюваності)."}, {"ex": "def read_blocks(lines):\n    block = []\n    for line in lines:\n        if line.strip():\n            block.append(line)\n        elif block:\n            yield block\n            block = []\n    if block:\n        yield block\n\nlist(read_blocks(['a', 'b', '', 'c', '']))", "out": "[['a', 'b'], ['c']]", "err": false, "stdout": "", "note": "Конвеєр: обробка даних частинами, без завантаження всього файлу."}, {"ex": "g = (x for x in range(3))\n(list(g), list(g))", "out": "([0, 1, 2], [])", "err": false, "stdout": "", "note": "Генератор одноразовий: другий обхід порожній."}, {"ex": "import sys\n(sys.getsizeof([x for x in range(10**5)]), sys.getsizeof(x for x in range(10**5)))", "out": "(800984, 200)", "err": false, "stdout": "", "note": "Список зберігає всі значення, генераторний вираз — лише стан (розміри в байтах)."}, {"ex": "def fib():\n    a, b = 0, 1\n    while True:\n        yield a\n        a, b = b, a + b\n\nfrom itertools import islice\nlist(islice(fib(), 10))", "out": "[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]", "err": false, "stdout": "", "note": "Нескінченна послідовність Фібоначчі."}]}, {"key": "vs", "label": "Iterator vs Generator", "kind": "table", "plain": true, "title": "Ітератор чи генератор", "tagline": "Будь-який генератор — це ітератор, але не навпаки. Генератор — найкоротший спосіб написати ітератор; клас-ітератор потрібен, коли треба більше контролю.", "imp": "", "tableTitle": "Порівняння", "tableSub": "ліва колонка — ознака", "cols": ["Ознака", "Iterator (клас)", "Generator", ""], "groups": [{"name": "Порівняння", "rows": [{"code": "Визначення", "desc": "", "ex": "", "out": "", "err": false}, {"code": "Створення", "desc": "", "ex": "", "out": "", "err": false}, {"code": "Стан", "desc": "", "ex": "", "out": "", "err": false}, {"code": "Пам'ять", "desc": "", "ex": "", "out": "", "err": false}, {"code": "Обсяг коду", "desc": "", "ex": "", "out": "", "err": false}, {"code": "`return`", "desc": "", "ex": "", "out": "", "err": false}, {"code": "`send()`", "desc": "", "ex": "", "out": "", "err": false}, {"code": "`throw()`", "desc": "", "ex": "", "out": "", "err": false}, {"code": "Повторне використання", "desc": "", "ex": "", "out": "", "err": false}, {"code": "`isinstance`", "desc": "", "ex": "", "out": "", "err": false}, {"code": "Коли брати", "desc": "", "ex": "", "out": "", "err": false}]}], "notes": ["Той самий результат, два способи: клас `Countdown` з `__iter__`/`__next__` (вкладка Iterable / Iterator) і функція `countdown` з `yield` (вкладка Generators).", "`from collections.abc import Generator, Iterator` — `isinstance(gen, Iterator)` дає `True`.", "Генератор вичерпується назавжди; щоб пройти ще раз — викличте функцію-генератор знову.", "Хочете багаторазовий iterable — зробіть клас, у якого `__iter__` повертає **новий** ітератор (наприклад, через `yield`)."], "sections": [{"name": "Один результат — два способи", "cells": [{"ex": "class Countdown:\n    def __init__(self, start):\n        self.current = start\n    def __iter__(self):\n        return self\n    def __next__(self):\n        if self.current <= 0:\n            raise StopIteration\n        self.current -= 1\n        return self.current + 1\n\nlist(Countdown(3))", "out": "[3, 2, 1]", "err": false, "stdout": "", "note": "Ітератор-клас: 11 рядків."}, {"ex": "def countdown(start):\n    while start > 0:\n        yield start\n        start -= 1\n\nlist(countdown(3))", "out": "[3, 2, 1]", "err": false, "stdout": "", "note": "Генератор: 4 рядки."}, {"ex": "from collections.abc import Iterator, Generator\ng = (x for x in range(3))\n(isinstance(g, Generator), isinstance(g, Iterator), isinstance(iter([1]), Generator))", "out": "(True, True, False)", "err": false, "stdout": "", "note": "Генератор — підтип ітератора, але `iter(list)` — не генератор."}, {"ex": "class Squares:\n    def __init__(self, n): self.n = n\n    def __iter__(self):\n        for i in range(self.n):\n            yield i * i\n\ns = Squares(4)\n(list(s), list(s))", "out": "([0, 1, 4, 9], [0, 1, 4, 9])", "err": false, "stdout": "", "note": "Комбінація: iterable-клас + `yield` в `__iter__` дає багаторазовий обхід."}]}]}, {"key": "ctx", "label": "contextmanager", "kind": "api", "title": "Генератор як менеджер контексту", "tagline": "`@contextmanager` перетворює генератор з **одним `yield`** на менеджер контексту для `with`: код до `yield` — вхід, значення після `yield` потрапляє в `as`, код після — вихід (у `finally`).", "chips": ["@contextmanager", "with … as f", "try / finally", "tempfile.mkstemp"], "imp": "", "files": [{"name": "gen/temp_file.py", "code": "import tempfile\nimport os\nfrom contextlib import contextmanager\n\n\n@contextmanager\ndef create_temporary_file(suffix=\".txt\", mode=\"r\"):\n    fd, path = tempfile.mkstemp(suffix=suffix)\n    os.close(fd)\n    try:\n        with open(path, mode) as f:\n            yield f\n    finally:\n        if os.path.exists(path):\n            os.remove(path)\n\n\nwith create_temporary_file(mode=\"w+\") as file:\n    file.write(\"Hello world!!\")\n    file.seek(0)\n    print(file.read())\n"}, {"name": "gen/sql/connection.py", "code": "import sqlite3\nfrom contextlib import contextmanager\n\n\n@contextmanager\ndef create_connection():\n    conn = None\n    try:\n        conn = sqlite3.connect(\"project.db\")\n        yield conn\n        conn.commit()\n    except Exception as err:\n        print(err)\n        conn.rollback()\n    finally:\n        conn.close()"}], "methodsTitle": "Як це працює", "props": [{"t": "Три частини", "d": "1) код до `yield` — виконується на вході у `with`; 2) `yield value` — `value` стає `as`-змінною; 3) код після — виконується на виході, навіть при винятку (якщо в `try/finally`)."}, {"t": "Винятки", "d": "Виняток із тіла `with` кидається в генератор у точці `yield`. Без `try/finally` очищення не відбудеться."}, {"t": "Навіщо", "d": "Гарантоване звільнення ресурсів: файли, з'єднання з БД, блокування, тимчасові файли."}], "methods": [{"ex": "from contextlib import contextmanager\n\n@contextmanager\ndef demo():\n    print('вхід')\n    try:\n        yield 'ресурс'\n    finally:\n        print('вихід')\n\nwith demo() as r:\n    print('тіло', r)", "out": "", "err": false, "stdout": "вхід\nтіло ресурс\nвихід", "note": "", "group": "Шаблон", "name": "базовий", "sig": "@contextmanager", "desc": "Мінімальний шаблон: `yield` один раз."}, {"ex": "from contextlib import contextmanager\n\n@contextmanager\ndef demo():\n    try:\n        yield\n    finally:\n        print('очищення')\n\ntry:\n    with demo():\n        raise ValueError('boom')\nexcept ValueError as e:\n    print('спіймано', e)", "out": "", "err": false, "stdout": "очищення\nспіймано boom", "note": "", "group": "Шаблон", "name": "виняток у тілі", "sig": "try/finally", "desc": "Очищення виконується навіть при винятку."}, {"ex": "import tempfile, os\nfrom contextlib import contextmanager\n\n@contextmanager\ndef tmp(suffix='.txt', mode='r'):\n    fd, path = tempfile.mkstemp(suffix=suffix)\n    os.close(fd)\n    try:\n        with open(path, mode) as f:\n            yield f\n    finally:\n        if os.path.exists(path):\n            os.remove(path)\n\nwith tmp(mode='w+') as f:\n    f.write('Hello world!!')\n    f.seek(0)\n    print(f.read())\n    p = f.name\nos.path.exists(p)", "out": "False", "err": false, "stdout": "Hello world!!", "note": "", "group": "Шаблон", "name": "tempfile", "sig": "mkstemp + remove", "desc": "Тимчасовий файл, що видаляється після `with` (`temp_file.py`)."}], "ops": [{"ex": "import sqlite3\nfrom contextlib import contextmanager\n\n@contextmanager\ndef create_connection(path=':memory:'):\n    conn = sqlite3.connect(path)\n    try:\n        yield conn\n        conn.commit()\n    except Exception as err:\n        print('rollback:', err)\n        conn.rollback()\n    finally:\n        conn.close()\n\nwith create_connection() as conn:\n    conn.execute('create table t(id integer)')\n    conn.execute('insert into t values (1)')\n    print(conn.execute('select * from t').fetchall())", "out": "", "err": false, "stdout": "[(1,)]", "note": "`create_connection` із `gen/sql/connection.py` на базі в пам'яті."}]}, {"key": "sqlite", "label": "sqlite3", "kind": "api", "title": "SQL у Python", "tagline": "`sqlite3` — вбудована база даних у одному файлі. Схема роботи: **connect → cursor → execute → commit → close**. Значення завжди передавайте **параметрами** `?`, а не підставляйте в рядок.", "chips": ["sqlite3.connect()", "cursor.execute()", "executemany()", "fetchone / fetchall", "commit / rollback", "?"], "imp": "", "files": [{"name": "gen/sql/create_table.py", "code": "sql_create_users_table = \"\"\"CREATE TABLE IF NOT EXISTS users (\n id INTEGER PRIMARY KEY AUTOINCREMENT,\n name VARCHAR(120),\n email VARCHAR(120),\n password VARCHAR(120),\n age numeric CHECK (age > 10 AND age < 90)\n);\"\"\"\n\nwith create_connection() as conn:\n    conn.cursor().execute(sql_create_users_table)"}, {"name": "gen/sql/insert_data.py", "code": "sql = \"INSERT INTO users(name,email,password, age) VALUES(?, ?, ?, ?)\"\n\nwith create_connection() as conn:\n    cur = conn.cursor()\n    for _ in range(50000):\n        cur.execute(sql, (fake.name(), fake.email(), fake.password(), randint(11, 89)))"}, {"name": "gen/sql/_select.py", "code": "select_regex = \"SELECT name FROM users WHERE name LIKE 'Ju%' LIMIT 100;\"\n\nwith create_connection() as conn:\n    cur = conn.cursor()\n    cur.execute(select_regex)\n    print(cur.fetchall())\n    cur.close()"}], "methodsTitle": "Підключення, запити та SQL", "props": [{"t": "Схема роботи", "d": "`connect()` → `cursor()` → `execute(sql, params)` → `commit()` для змін → `close()`. Зручно загорнути в `@contextmanager`."}, {"t": "Параметри `?`", "d": "`execute('… WHERE id = ?', (4,))` — друге значення завжди **кортеж**. Це захищає від SQL-ін'єкцій. Ніколи не використовуйте f-рядки для значень."}, {"t": "commit", "d": "`INSERT`/`UPDATE`/`DELETE`/`ALTER` не зберігаються, доки не викликано `conn.commit()`. `rollback()` скасовує незафіксовані зміни."}, {"t": "Вибірка", "d": "`fetchone()` — один рядок (або `None`), `fetchmany(n)`, `fetchall()` — список кортежів. Курсор також ітерується: `for row in cur`."}], "methods": [{"ex": "import sqlite3\nconn = sqlite3.connect(':memory:')\ntype(conn).__name__", "out": "'Connection'", "err": false, "stdout": "", "note": "", "group": "Підключення", "name": "connect()", "sig": "sqlite3.connect(path)", "desc": "Відкриває або створює файл БД. `':memory:'` — БД у пам'яті."}, {"ex": "cur = conn.cursor()\ntype(cur).__name__", "out": "'Cursor'", "err": false, "stdout": "", "note": "", "group": "Підключення", "name": "cursor()", "sig": "conn.cursor()", "desc": "Курсор — об'єкт для виконання запитів і читання результатів."}, {"ex": "cur.execute(\"select name from sqlite_master where type='table'\").fetchall()", "out": "[('users',), ('sqlite_sequence',)]", "err": false, "stdout": "", "note": "", "group": "DDL", "name": "CREATE TABLE", "sig": "CREATE TABLE IF NOT EXISTS …", "desc": "Створює таблицю; `CHECK` задає обмеження; `PRIMARY KEY AUTOINCREMENT` — id."}, {"ex": "cur.execute('alter table users add column phone varchar(30)')\n[c[1] for c in cur.execute('pragma table_info(users)')]", "out": "['id', 'name', 'email', 'age', 'phone']", "err": false, "stdout": "", "note": "", "group": "DDL", "name": "ALTER TABLE", "sig": "ALTER TABLE t ADD COLUMN c TYPE", "desc": "Додає стовпець (`alter_table.py`)."}, {"ex": "cur.execute('INSERT INTO users(name, email, age) VALUES (?, ?, ?)', ('Eve', 'e@x.com', 22))\ncur.lastrowid", "out": "5", "err": false, "stdout": "", "note": "", "group": "Запис", "name": "INSERT", "sig": "execute(sql, params)", "desc": "Вставка з параметрами `?`."}, {"ex": "cur.executemany('INSERT INTO users(name, email, age) VALUES (?, ?, ?)', [('A', 'a@a', 20), ('B', 'b@b', 21)])\ncur.rowcount", "out": "2", "err": false, "stdout": "", "note": "", "group": "Запис", "name": "executemany()", "sig": "executemany(sql, seq)", "desc": "Один запит — багато наборів параметрів, швидше за цикл."}, {"ex": "cur.execute('ALTER TABLE users ADD COLUMN phone VARCHAR(30)')\ncur.execute('UPDATE users SET phone = ? WHERE id = ?', ('+380501112233', 1))\ncur.execute('SELECT id, phone FROM users WHERE id = 1').fetchone()", "out": "(1, '+380501112233')", "err": false, "stdout": "", "note": "", "group": "Запис", "name": "UPDATE", "sig": "UPDATE t SET c = ? WHERE id = ?", "desc": "Оновлення рядка (`update_data.py`). Не забувайте `WHERE`!"}, {"ex": "cur.execute('SELECT * FROM users WHERE id = ?', (2,))\ncur.fetchone()", "out": "(2, 'Julian', 'ju@x.com', 28)", "err": false, "stdout": "", "note": "", "group": "Читання", "name": "fetchone()", "sig": "cur.fetchone()", "desc": "Один рядок або `None`."}, {"ex": "cur.execute('select id, name, age from users where age > 30 order by name, age desc limit 10')\ncur.fetchall()", "out": "[(4, 'Ann', 31), (3, 'Bob', 45), (1, 'Julia', 34)]", "err": false, "stdout": "", "note": "", "group": "Читання", "name": "fetchall()", "sig": "cur.fetchall()", "desc": "Усі рядки списком кортежів."}, {"ex": "cur.execute(\"SELECT name FROM users WHERE name LIKE 'Ju%' LIMIT 100\").fetchall()", "out": "[('Julia',), ('Julian',)]", "err": false, "stdout": "", "note": "", "group": "Читання", "name": "LIKE", "sig": "WHERE name LIKE 'Ju%'", "desc": "`%` — довільна кількість символів, `_` — один."}, {"ex": "cur.execute('DELETE FROM users')\nconn.rollback()\ncur.execute('SELECT count(*) FROM users').fetchone()", "out": "(0,)", "err": false, "stdout": "", "note": "", "group": "Транзакції", "name": "commit() / rollback()", "sig": "conn.commit()", "desc": "Зафіксувати або скасувати зміни."}, {"ex": "cur.execute('INSERT INTO users(name, email, age) VALUES (?, ?, ?)', ('Kid', 'k@x', 5))", "out": "IntegrityError: CHECK constraint failed: age > 10 AND age < 90", "err": true, "stdout": "", "note": "", "group": "Транзакції", "name": "CHECK", "sig": "CHECK (age > 10 AND age < 90)", "desc": "Порушення обмеження — `IntegrityError`."}], "ops": [{"ex": "name = \"x' OR '1'='1\"\nbad = f\"SELECT * FROM users WHERE name = '{name}'\"\ngood = cur.execute('SELECT * FROM users WHERE name = ?', (name,)).fetchall()\nprint(len(cur.execute(bad).fetchall()), 'рядків із f-рядком (ін\\'єкція!)')\nprint(len(good), 'рядків із параметром')", "out": "", "err": false, "stdout": "4 рядків із f-рядком (ін'єкція!)\n0 рядків із параметром", "note": "Чому не можна підставляти значення в рядок: SQL-ін'єкція."}, {"ex": "cur.execute('SELECT name, age FROM users ORDER BY age')\nfor name, age in cur:\n    print(name, age)", "out": "", "err": false, "stdout": "Julian 28\nAnn 31\nJulia 34\nBob 45", "note": "Курсор ітерується — це ітератор рядків."}, {"ex": "conn.row_factory = sqlite3.Row\nrow = conn.execute('SELECT * FROM users WHERE id = 1').fetchone()\n(row['name'], row['age'])", "out": "('Julia', 34)", "err": false, "stdout": "", "note": "`row_factory = sqlite3.Row` — доступ до стовпців за іменем."}]}]};
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const md = s => esc(s).replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2">$1</a>').replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+
+const KW = new Set("False None True and as assert break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield".split(" "));
+const BI = new Set("abs all any bin bool chr dict divmod frozenset hash hex id int isinstance len list max min oct ord pow print range repr reversed round set sorted str sum tuple type".split(" "));
+function hl(code) {
+  const re = /(#[^\n]*)|([rbfRBF]{0,2}(?:'''[\s\S]*?'''|"""[\s\S]*?"""|'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"))|(\b\d[\d_]*(?:\.\d+)?\b)|([A-Za-z_][A-Za-z0-9_]*)/g;
+  let out = "", last = 0, m;
+  while ((m = re.exec(code))) {
+    out += esc(code.slice(last, m.index));
+    const [t, com, str, num, id] = m;
+    if (com) out += `<span class="tk-c">${esc(t)}</span>`;
+    else if (str) out += `<span class="tk-s">${esc(t)}</span>`;
+    else if (num) out += `<span class="tk-n">${esc(t)}</span>`;
+    else if (KW.has(id)) out += `<span class="tk-k">${esc(t)}</span>`;
+    else if (BI.has(id) && code[m.index - 1] !== ".") out += `<span class="tk-b">${esc(t)}</span>`;
+    else out += esc(t);
+    last = m.index + t.length;
+  }
+  return out + esc(code.slice(last));
+}
+function cell(item) {
+  return `<div class="cell${item.wide ? " wide" : ""}">
+    ${item.file ? `<div class="fname">${esc(item.file)}</div>` : ""}
+    <pre>${hl(item.ex)}</pre>
+    ${item.stdout ? `<div class="stdout">${esc(item.stdout.trimEnd())}</div>` : ""}
+    ${item.out ? `<div class="res${item.err ? " err" : ""}"><span>${item.err ? esc(item.out) : hl(item.out)}</span></div>` : ""}
+    ${item.note ? `<div class="note">${md(item.note)}</div>` : ""}
+  </div>`;
+}
+const impHtml = imp => !imp ? "" : `<div class="imp-l">Підготовка (виконано перед кожним прикладом)</div><div class="cell imp"><pre>${hl(imp)}</pre></div>`;
+
+const filesHtml = files => !files ? "" : `<div class="imp-l">Файли в теці project/</div><div class="ops files">${files.map(f => `<div class="cell"><div class="fname">${esc(f.name)}</div><pre>${hl(f.code)}</pre></div>`).join("")}</div>`;
+
+function methodsHtml(tab) {
+  let html = "", group = null;
+  for (const m of tab.methods) {
+    if (m.group && m.group !== group) { group = m.group; html += `<div class="m-group" data-g="${esc(group)}">${esc(group)}</div>`; }
+    html += `<div class="m-row" data-q="${esc((m.name + " " + m.desc + " " + m.sig).toLowerCase())}" data-g="${esc(m.group || "")}">
+      <div><div class="m-name">${esc(m.name)}</div><div class="m-sig">${esc(m.sig)}</div></div>
+      <div class="m-desc">${md(m.desc)}</div>
+      ${cell(m)}</div>`;
+  }
+  return html;
+}
+
+function buildApi(tab) {
+  return `
+    <div class="p-head">
+      <div class="p-name small">${esc(tab.label)}</div>
+      <div><p class="p-tag"><b>${esc(tab.title)}.</b> ${md(tab.tagline)}</p>
+        <div class="chips">${tab.chips.map(l => `<span class="chip">${esc(l)}</span>`).join("")}</div></div>
+    </div>
+    ${impHtml(tab.imp)}
+    ${filesHtml(tab.files)}
+    <section class="s"><div class="s-h"><h2>Ключові властивості</h2></div>
+      <div class="props">${tab.props.map(pr => `<div class="prop"><h3>${esc(pr.t)}</h3><p>${md(pr.d)}</p></div>`).join("")}</div></section>
+    <section class="s"><div class="s-h"><h2>${esc(tab.methodsTitle || "Методи")}</h2><span class="sub">позицій: ${tab.methods.length}</span><span class="grow"></span>
+      <input class="filter" type="search" placeholder="Пошук" aria-label="Пошук"></div>
+      <div class="m-list">${methodsHtml(tab)}</div></section>
+    <section class="s"><div class="s-h"><h2>Операції та підводні камені</h2><span class="sub">реальні результати з Python ${DATA.version}</span></div>
+      <div class="ops">${tab.ops.map(cell).join("")}</div></section>`;
+}
+
+
+const VS_ROWS = [["Визначення", "Об'єкт із `__iter__` і `__next__`", "Функція з `yield` або генераторний вираз"], ["Створення", "Клас із методами `__iter__`/`__next__`", "`def` з `yield` або `(x for x in …)`"], ["Стан", "Вручну — у атрибутах екземпляра", "Автоматично: Python призупиняє й відновлює фрейм"], ["Пам'ять", "Залежить від реалізації", "Лінива: значення по одному"], ["Обсяг коду", "Більше шаблонного коду", "Стисло"], ["`return`", "Звичайне повернення з методу", "Кидає `StopIteration` (значення в `e.value`)"], ["`send()`", "Немає", "Є — можна передавати значення в `yield`"], ["`throw()`", "Немає", "Є — можна вкинути виняток"], ["Повторне використання", "Можна скинути стан, якщо реалізовано", "Після вичерпання — ні"], ["`isinstance`", "`Iterable` / `Iterator`", "`Generator` (підтип `Iterator`)"], ["Коли брати", "Складна поведінка, багаторазові об'єкти", "Конвеєри, ліниві послідовності, співпрограми"]];
+function buildVs(tab) {
+  return `
+    <div class="p-head"><div class="p-name small">${esc(tab.label)}</div>
+      <div><p class="p-tag"><b>${esc(tab.title)}.</b> ${md(tab.tagline)}</p></div></div>
+    <section class="s"><div class="s-h"><h2>Порівняння</h2></div>
+      <div class="tbl-scroll"><table class="t fmt"><thead><tr><th>Ознака</th><th>Iterator (клас)</th><th>Generator</th></tr></thead><tbody>
+      ${VS_ROWS.map(r => `<tr><td class="c"><b>${md(r[0])}</b></td><td class="wrap">${md(r[1])}</td><td class="wrap">${md(r[2])}</td></tr>`).join("")}
+      </tbody></table></div></section>
+    <section class="s"><div class="s-h"><h2>На що звернути увагу</h2></div><ul class="notes">${tab.notes.map(n => `<li>${md(n)}</li>`).join("")}</ul></section>
+    ${tab.sections.map(g => `<section class="s"><div class="s-h"><h2>${esc(g.name)}</h2><span class="sub">реальні результати з Python ${DATA.version}</span></div><div class="ops">${g.cells.map(cell).join("")}</div></section>`).join("")}`;
+}
+
+function buildTable(tab) {
+  const rows = tab.groups.map(g => `<tr class="fmt-group"><td colspan="4">${esc(g.name)}</td></tr>` + g.rows.map(r =>
+    `<tr><td class="c"><code>${esc(r.code)}</code></td><td class="wrap">${md(r.desc)}</td><td class="ex">${hl(r.ex)}</td>${tab.plain ? `<td class="wrap note-c">${md(r.out)}</td>` : `<td class="ex out${r.err ? " err" : ""}">${esc(r.out)}</td>`}</tr>`).join("")).join("");
+  return `
+    <div class="p-head">
+      <div class="p-name small">${esc(tab.label)}</div>
+      <div><p class="p-tag"><b>${esc(tab.title)}.</b> ${md(tab.tagline)}</p></div>
+    </div>
+    ${impHtml(tab.imp)}
+    <section class="s"><div class="s-h"><h2>${esc(tab.tableTitle)}</h2><span class="sub">${esc(tab.tableSub)}</span></div>
+      <div class="tbl-scroll"><table class="t fmt"><thead><tr>${tab.cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>
+    </section>
+    ${tab.notes && tab.notes.length ? `<section class="s"><div class="s-h"><h2>На що звернути увагу</h2></div><ul class="notes">${tab.notes.map(n => `<li>${md(n)}</li>`).join("")}</ul></section>` : ""}
+    ${tab.sections.map(g => `<section class="s"><div class="s-h"><h2>${esc(g.name)}</h2><span class="sub">реальні результати з Python ${DATA.version}</span></div><div class="ops">${g.cells.map(cell).join("")}</div></section>`).join("")}`;
+}
+
+function buildSteps(tab) {
+  return `
+    <div class="p-head">
+      <div class="p-name small">${esc(tab.label)}</div>
+      <div><p class="p-tag"><b>${esc(tab.title)}.</b> ${md(tab.tagline)}</p>
+        <div class="chips">${tab.chips.map(l => `<span class="chip">${esc(l)}</span>`).join("")}</div></div>
+    </div>
+    ${tab.steps.map((st, i) => `<section class="s"><div class="s-h"><span class="step-n">${i + 1}</span><h2>${esc(st.title)}</h2></div>
+      <div class="step-d">${st.text.split("\n\n").map(t => `<p>${md(t)}</p>`).join("")}</div>
+      <div class="ops">${st.cells.map(cell).join("")}</div></section>`).join("")}
+    <section class="s"><div class="s-h"><h2>Чекліст і типові відмови</h2></div><ul class="notes">${tab.notes.map(n => `<li>${md(n)}</li>`).join("")}</ul></section>`;
+}
+
+function buildRecipes(tab) {
+  return `
+    <div class="p-head">
+      <div class="p-name small">${esc(tab.label)}</div>
+      <div><p class="p-tag"><b>${esc(tab.title)}.</b> ${md(tab.tagline)}</p></div>
+    </div>
+    ${impHtml(tab.imp)}
+    ${tab.groups.map(g => `<section class="s"><div class="s-h"><h2>${esc(g.name)}</h2></div><div class="ops">${g.cells.map(cell).join("")}</div></section>`).join("")}`;
+}
+
+$("#ver").textContent = `CPython ${DATA.version}`;
+$("#ver2").textContent = DATA.version;
+const TABS = DATA.tabs.map(t => t.key);
+const tablist = $("#tablist"), panels = $("#panels");
+DATA.tabs.forEach((tab, i) => {
+  const b = document.createElement("button");
+  const concept = tab.kind !== "api";
+  b.className = "tab" + (concept ? " concept" : "") + (tab.sep ? " sep" : "");
+  b.id = "tab-" + tab.key; b.setAttribute("role", "tab"); b.setAttribute("aria-controls", "panel-" + tab.key); b.tabIndex = -1;
+  b.textContent = tab.label;
+  b.addEventListener("click", () => select(tab.key, true));
+  tablist.appendChild(b);
+  const p = document.createElement("div");
+  p.className = "panel"; p.id = "panel-" + tab.key; p.setAttribute("role", "tabpanel"); p.setAttribute("aria-labelledby", "tab-" + tab.key); p.hidden = true;
+  p.innerHTML = tab.key === "vs" ? buildVs(tab) : tab.kind === "table" ? buildTable(tab) : tab.kind === "recipes" ? buildRecipes(tab) : tab.kind === "steps" ? buildSteps(tab) : buildApi(tab);
+  const f = $(".filter", p);
+  if (f) f.addEventListener("input", () => {
+    const q = f.value.trim().toLowerCase();
+    const rows = p.querySelectorAll(".m-row");
+    rows.forEach(r => r.hidden = q && !r.dataset.q.includes(q));
+    p.querySelectorAll(".m-group").forEach(g => g.hidden = ![...rows].some(r => r.dataset.g === g.dataset.g && !r.hidden));
+  });
+  panels.appendChild(p);
+});
+tablist.addEventListener("keydown", e => {
+  const i = TABS.indexOf(document.activeElement.id.replace("tab-", ""));
+  if (i < 0) return;
+  let j = null;
+  if (e.key === "ArrowRight") j = (i + 1) % TABS.length;
+  if (e.key === "ArrowLeft") j = (i - 1 + TABS.length) % TABS.length;
+  if (e.key === "Home") j = 0;
+  if (e.key === "End") j = TABS.length - 1;
+  if (j !== null) { e.preventDefault(); select(TABS[j], true); $("#tab-" + TABS[j]).focus(); }
+});
+function select(key, user) {
+  if (!TABS.includes(key)) key = TABS[0];
+  TABS.forEach(k => {
+    const on = k === key;
+    const b = $("#tab-" + k); b.setAttribute("aria-selected", on); b.tabIndex = on ? 0 : -1;
+    $("#panel-" + k).hidden = !on;
+  });
+  if (user) {
+    try { localStorage.setItem("mod07-tab", key); } catch (e) {}
+    try { history.replaceState(null, "", "#" + key); } catch (e) {}
+    const t = $(".tabs");
+    if (t.getBoundingClientRect().top <= 1) window.scrollTo({ top: t.offsetTop, behavior: "instant" });
+    $("#tab-" + key).scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
+}
+let initial = location.hash.slice(1);
+if (!TABS.includes(initial)) { try { initial = localStorage.getItem("mod07-tab") || ""; } catch (e) { initial = ""; } }
+select(TABS.includes(initial) ? initial : TABS[0], false);
+window.addEventListener("hashchange", () => select(location.hash.slice(1), false));
+</script>
+</body>
+</html>
