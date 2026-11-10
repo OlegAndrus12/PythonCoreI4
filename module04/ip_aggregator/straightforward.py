@@ -4,7 +4,7 @@ import re
 ips = {}
 
 file = open("logs.txt", "r")
-for log_line in file.readlines():
+for log_line in file:
     match = re.search(r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})", log_line)
     key = match.group(0)
     if key not in ips.keys():
